@@ -12,6 +12,6 @@ export function lastPlayed(id: string, matches: Match[]) {
         (m) =>
           m.status !== "cancelled" && [...m.teamA, ...m.teamB].includes(id),
       )
-      .map((m) => m.createdAt),
+      .map((m) => m.endedAt ?? m.createdAt),
   );
 }

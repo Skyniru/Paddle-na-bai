@@ -1,4 +1,4 @@
-const CACHE = "paddle-v1";
+const CACHE = "paddle-v2";
 const PAGES = [
   "/",
   "/courts",

@@ -9,7 +9,19 @@ export interface Player extends RecordBase {
   status: PlayerStatus;
   photo?: string;
 }
+export interface PlayerGroup extends RecordBase {
+  name: string;
+  playerIds: string[];
+  photo?: string;
+}
 export interface Session extends RecordBase {
+  attendance?: Record<
+    string,
+    { action: "check-in" | "check-out" | "undo-check-out"; at: number }[]
+  >;
+  round?: number;
+  elapsedDuration?: number;
+  playerStatuses?: Record<string, PlayerStatus>;
   name: string;
   venue: string;
   courtCount: number;
@@ -22,10 +34,14 @@ export interface Session extends RecordBase {
 export interface Court extends RecordBase {
   sessionId: string;
   number: number;
+  reservationStart?: number;
+  reservationEnd?: number;
+  reservationHistory?: { start: number; end: number; changedAt: number }[];
 }
 export interface Match extends RecordBase {
   sessionId: string;
   courtId: string;
+  eligiblePlayerIds?: string[];
   teamA: string[];
   teamB: string[];
   status: "playing" | "completed" | "cancelled";

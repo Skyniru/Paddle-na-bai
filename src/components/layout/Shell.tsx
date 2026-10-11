@@ -58,6 +58,9 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   }
   return (
     <>
+      <a className="skip-link" href="#main-content">
+        Skip to content
+      </a>
       <header className="header">
         <Link href="/" className="brand">
           <span className="brand-icon">
@@ -68,10 +71,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             <small>GOOD GAMES. GREAT COMPANY.</small>
           </span>
         </Link>
-        <nav className="desktop-nav">
+        <nav className="desktop-nav" aria-label="Main navigation">
           {links.map(([href, label, Icon]) => (
             <Link
               className={path === href ? "selected" : ""}
+              aria-current={path === href ? "page" : undefined}
               key={href}
               href={href}
             >
@@ -83,7 +87,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
         <div className="header-actions">
           <span className="local-badge">
             {offline ? <WifiOff size={13} /> : <span className="dot" />}
-            {offline ? "Offline" : "Local first"}
+            {offline ? "Offline" : "Saved on device"}
           </span>
           <button
             className="icon-button"
@@ -114,16 +118,19 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             <p>
               Saved on this device.
               <br />
-              Cloud sync is planned.
+              Export a backup to keep a copy.
             </p>
           </div>
         )}
       </header>
-      <main>{children}</main>
-      <nav className="bottom-nav">
+      <main id="main-content" tabIndex={-1}>
+        {children}
+      </main>
+      <nav className="bottom-nav" aria-label="Mobile navigation">
         {links.map(([href, label, Icon]) => (
           <Link
             className={path === href ? "selected" : ""}
+            aria-current={path === href ? "page" : undefined}
             key={href}
             href={href}
           >

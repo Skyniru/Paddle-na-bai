@@ -124,3 +124,18 @@ In VS Code you can also use Source Control to stage changes, enter a commit mess
 Dependencies, build output, generated service worker, certificates, QR images, and browser test artifacts are excluded from Git. A fresh checkout needs `npm install`, then `npm run dev` or `npm run build`.
 
 GitHub saves the application's source code. Players, sessions, photos, and results are stored separately in the browser's IndexedDB; use **Export backup** inside the app to save those records.
+
+## Saved player groups and playing lists
+
+Open **Players → Create group**, name your group, and search for saved players to choose its members. Groups contain a reusable list of players; there is no messaging. Edit or delete a group without deleting player records or match history.
+
+From **Your groups**, tap a logo or **Add to session** to open session setup or add late arrivals to an existing session. When creating a session, tap a group logo to view its members. Choose **Add whole group**, **Add active players**, or tap individual player tiles. Choose **All players** to pick players from outside a group; search is optional. Selections stay checked as you search. With saved groups, the session starts with an empty selection so you can choose who is actually attending. Without groups, available players are selected as before.
+
+During a session, use **Playing list → Add saved players** for late arrivals. Set availability to **Ready to play**, **Taking a rest**, or **Finished for today**. These changes belong to that session and do not change a player's saved availability for future games. Players on court finish their match before changing availability.
+
+Choose **Fair rotation** and select **Generate round** after recording results. Players with fewer assigned games go first; ties favor the longest rest since their last match ended. Partners and opponents vary when possible. Matches in progress stay intact. Pure random mode does not guarantee equal turns. Groups, players, availability, and results are saved on this device and included in **Export backup**; they do not sync across devices.
+
+You can also enter **New player name → Add name** directly inside group creation, session setup, or the late-arrival picker. Each name is saved and selected without leaving the form. Pressing Enter in the name field also adds the player. An existing name is reused rather than duplicated. Groups can be saved empty for planning and updated later; sessions still require at least four players. Creating a group does not start a session, and starting a session does not require a group.
+
+
+Attendance and court reservations: New sessions require host check-in before matchmaking. Check-out is blocked during active matches, supports re-entry and undo, and retains timestamped history. Courts use Manila reservation windows (including overnight bookings), warn in the last 15 minutes, and can be extended by 30 minutes. Expiry blocks new assignments without stopping live matches. Session time remains independent. Existing sessions retain legacy availability until closed. Dexie schema v4 preserves nested attendance events and reservation history; stable record IDs, epoch timestamps and updatedAt fields are included in JSON backups for future Supabase synchronization. No remote synchronization is enabled.

@@ -13,7 +13,7 @@ scan(".next/static");
 const build = fs.readFileSync(".next/BUILD_ID", "utf8").trim();
 let worker = fs.readFileSync("scripts/sw-template.js", "utf8");
 worker = worker.replace(
-  /const CACHE\s*=\s*["']paddle-v1["']/,
+  /const CACHE\s*=\s*["']paddle-v\d+["']/,
   "const CACHE = " + JSON.stringify("paddle-" + build),
 );
 worker = worker.replace(

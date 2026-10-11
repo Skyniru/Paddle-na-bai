@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import Link from "next/link";
 import {
@@ -26,6 +26,11 @@ import {
 } from "@/lib/db";
 import { statistics } from "@/lib/statistics";
 import type { Player, Mode } from "@/types";
+import ReservationSetup from "./courts/ReservationSetup";
+import { isCheckedIn, courtAvailable } from "@/lib/reservations";
+import GroupManager from "./players/GroupManager";
+import SessionRoster from "./players/SessionRoster";
+import { SessionPlayerPicker } from "./players/PlayerPicker";
 import SessionCard from "./dashboard/SessionCard";
 import StatsOverview from "./dashboard/StatsOverview";
 import CourtCard from "./courts/CourtCard";
@@ -33,11 +38,17 @@ import PlayerCard, { Avatar } from "./players/PlayerCard";
 import LeaderboardTable from "./leaderboard/LeaderboardTable";
 type View = "play" | "courts" | "players" | "leaderboard" | "snaps" | "history";
 export default function App({ view }: { view: View }) {
+  const [now, refreshClock] = useState(() => Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => refreshClock(Date.now()), 10000);
+    return () => clearInterval(timer);
+  }, []);
   const [loadError, setLoadError] = useState("");
   const data = useLiveQuery(async () => {
     try {
       return {
         players: await db.players.toArray(),
+        groups: await db.groups.toArray(),
         sessions: await db.sessions.orderBy("createdAt").reverse().toArray(),
         courts: await db.courts.toArray(),
         matches: await db.matches.toArray(),
@@ -57,7 +68,32 @@ export default function App({ view }: { view: View }) {
   const [detail, setDetail] = useState<Player | null>(null);
   const [historyId, setHistoryId] = useState("");
   const [mode, setMode] = useState<Mode>("fair");
+  const [editingGroup, setEditingGroup] = useState(false);
   const [search, setSearch] = useState("");
+  const [addingSessionPlayer, setAddingSessionPlayer] = useState(false);
+  const [sessionGroupId, setSessionGroupId] = useState("");
+  const [rosterGroupId, setRosterGroupId] = useState("");
+  const [groupRequest, setGroupRequest] = useState(0);
+  useEffect(() => {
+    if (view !== "play" || !data) return;
+    const groupId = new URLSearchParams(window.location.search).get("group");
+    if (!groupId || !data.groups.some((g) => g.id === groupId)) return;
+    const frame = requestAnimationFrame(() => {
+      if (data.sessions.some((s) => s.status !== "completed")) {
+        setRosterGroupId(groupId);
+        setGroupRequest((request) => request + 1);
+      } else {
+        setSessionGroupId(groupId);
+        setModal("session");
+      }
+      window.history.replaceState(
+        window.history.state,
+        "",
+        window.location.pathname,
+      );
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [view, data]);
   async function action(fn: () => Promise<unknown>, success = "") {
     setError("");
     setNotice("");
@@ -93,15 +129,18 @@ export default function App({ view }: { view: View }) {
         Loading your courts…
       </div>
     );
-  const { players, sessions, courts, matches } = data;
+  const { players, groups, sessions, courts, matches } = data;
   const current = sessions.find((s) => s.status !== "completed");
   const selected = historyId
     ? sessions.find((s) => s.id === historyId)
     : current;
   const sessionMatches = matches.filter((m) => m.sessionId === selected?.id);
-  const sessionPlayers = players.filter((p) =>
-    selected?.playerIds.includes(p.id),
-  );
+  const sessionPlayers = players
+    .filter((p) => selected?.playerIds.includes(p.id))
+    .map((p) => ({
+      ...p,
+      status: selected?.playerStatuses?.[p.id] ?? p.status,
+    }));
   const sessionCourts = courts
     .filter((c) => c.sessionId === selected?.id)
     .sort((a, b) => a.number - b.number);
@@ -111,7 +150,11 @@ export default function App({ view }: { view: View }) {
       .flatMap((m) => [...m.teamA, ...m.teamB]),
   );
   const waiting = sessionPlayers.filter(
-    (p) => p.status === "active" && !liveIds.has(p.id),
+    (p) =>
+      p.status === "active" &&
+      !!selected &&
+      isCheckedIn(selected, p.id) &&
+      !liveIds.has(p.id),
   );
   function addPlayer() {
     setEdit(null);
@@ -161,6 +204,20 @@ export default function App({ view }: { view: View }) {
         courtCount: Number(f.get("courts")),
         playerIds: f.getAll("players").map(String),
         duration: f.get("duration") ? Number(f.get("duration")) : undefined,
+        reservations: Array.from(
+          { length: Number(f.get("courts")) },
+          (_, i) => {
+            const date = String(f.get("reservationDate"));
+            const start = Date.parse(
+              date + "T" + f.get("courtStart" + i) + ":00+08:00",
+            );
+            let end = Date.parse(
+              date + "T" + f.get("courtEnd" + i) + ":00+08:00",
+            );
+            if (end < start) end += 86400000;
+            return { number: Number(f.get("courtNumber" + i)), start, end };
+          },
+        ),
       });
       setModal(null);
     }, "Session created. Start when your crew is ready.");
@@ -224,7 +281,11 @@ export default function App({ view }: { view: View }) {
   }[view];
   return (
     <>
-      <div className="page-heading">
+      <div
+        className={
+          view === "play" ? "page-heading play-heading" : "page-heading"
+        }
+      >
         <div>
           <p className="eyebrow">{headings[0]}</p>
           <h1>{headings[1]}</h1>
@@ -331,7 +392,69 @@ export default function App({ view }: { view: View }) {
                   </button>
                 </div>
               </div>
+              {sessionCourts.length > 0 &&
+                sessionCourts.every(
+                  (c) =>
+                    c.reservationEnd !== undefined && c.reservationEnd <= now,
+                ) && (
+                  <div className="alert">
+                    All court reservations have ended. Extend a court or end the
+                    session.
+                  </div>
+                )}
+              <div className="stats-grid">
+                {[
+                  [
+                    sessionPlayers.filter((p) => isCheckedIn(current, p.id))
+                      .length,
+                    "Checked-In Players",
+                  ],
+                  [liveIds.size, "Active Players"],
+                  [
+                    sessionPlayers.filter(
+                      (p) => isCheckedIn(current, p.id) && !liveIds.has(p.id),
+                    ).length,
+                    "Resting Players",
+                  ],
+                  [
+                    sessionPlayers.filter(
+                      (p) =>
+                        current.attendance?.[p.id]?.at(-1)?.action ===
+                        "check-out",
+                    ).length,
+                    "Checked-Out Players",
+                  ],
+                  [
+                    sessionCourts.filter((c) => courtAvailable(c, now)).length,
+                    "Reserved Courts",
+                  ],
+                  [
+                    Math.ceil(
+                      sessionCourts.reduce(
+                        (sum, c) =>
+                          sum + Math.max(0, (c.reservationEnd ?? now) - now),
+                        0,
+                      ) / 60000,
+                    ) + " min",
+                    "Remaining Court Time",
+                  ],
+                  [current.round ?? 0, "Current Round"],
+                ].map(([value, label]) => (
+                  <div className="stat" key={label}>
+                    <strong>{value}</strong>
+                    <span>{label}</span>
+                  </div>
+                ))}
+              </div>
               {renderCourts()}
+              <SessionRoster
+                key={current.id + rosterGroupId + groupRequest}
+                initialGroupId={rosterGroupId}
+                session={current}
+                players={players}
+                groups={groups}
+                matches={sessionMatches}
+              />
               <section className="waiting">
                 <div className="section-heading">
                   <div>
@@ -410,7 +533,7 @@ export default function App({ view }: { view: View }) {
                 <div>
                   <span>01</span>
                   <Users size={23} />
-                  <h3>Bring your people</h3>
+                  <h3>1. Add players</h3>
                   <p>Add your crew once. They’ll be ready for every session.</p>
                   <button onClick={addPlayer}>
                     Add a player <ArrowUpRight size={16} />
@@ -419,7 +542,7 @@ export default function App({ view }: { view: View }) {
                 <div>
                   <span>02</span>
                   <MapPin size={23} />
-                  <h3>Set the scene</h3>
+                  <h3>2. Create a session</h3>
                   <p>
                     Pick a venue, choose your courts, and gather your players.
                   </p>
@@ -430,9 +553,10 @@ export default function App({ view }: { view: View }) {
                 <div>
                   <span>03</span>
                   <Shuffle size={23} />
-                  <h3>Mix it up. Play fair.</h3>
+                  <h3>3. Start playing</h3>
                   <p>
-                    Fresh teams and fair rotations. More games for everyone.
+                    Start the session, generate teams, and record each match
+                    result.
                   </p>
                   <Link href="/courts">
                     Explore courts <ArrowUpRight size={16} />
@@ -445,46 +569,57 @@ export default function App({ view }: { view: View }) {
       )}
       {view === "players" && (
         <>
-          <div className="section-heading">
-            <h2>
-              All players <span className="count">{players.length}</span>
-            </h2>
-            <input
-              className="search"
-              placeholder="Search your crew…"
-              aria-label="Search players"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-            />
-          </div>
-          <div className="player-grid">
-            {players
-              .filter((p) =>
-                p.name.toLowerCase().includes(search.toLowerCase()),
-              )
-              .map((p) => (
-                <PlayerCard
-                  key={p.id}
-                  player={p}
-                  onClick={() => setDetail(p)}
+          <GroupManager
+            players={players}
+            groups={groups}
+            onEditingChange={setEditingGroup}
+          />
+          {!editingGroup && (
+            <>
+              <div className="section-heading">
+                <h2>
+                  All players <span className="count">{players.length}</span>
+                </h2>
+                <input
+                  className="search"
+                  placeholder="Search your crew…"
+                  aria-label="Search players"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
                 />
-              ))}
-          </div>
-          {!players.length && (
-            <div className="empty-state">
-              <Users size={38} />
-              <h2>Every great game needs a crew.</h2>
-              <p>Add your first player to get things started.</p>
-              <button className="primary" onClick={addPlayer}>
-                <Plus size={16} />
-                Add a player
-              </button>
-            </div>
+              </div>
+              <div className="player-grid">
+                {players
+                  .filter((p) =>
+                    p.name.toLowerCase().includes(search.toLowerCase()),
+                  )
+                  .map((p) => (
+                    <PlayerCard
+                      key={p.id}
+                      player={p}
+                      onClick={() => setDetail(p)}
+                    />
+                  ))}
+              </div>
+              {!players.length && (
+                <div className="empty-state">
+                  <Users size={38} />
+                  <h2>Every great game needs a crew.</h2>
+                  <p>Add your first player to get things started.</p>
+                  <button className="primary" onClick={addPlayer}>
+                    <Plus size={16} />
+                    Add a player
+                  </button>
+                </div>
+              )}
+              {players.length > 0 &&
+                !players.some((p) =>
+                  p.name.toLowerCase().includes(search.toLowerCase()),
+                ) && (
+                  <p className="empty-inline">No players match your search.</p>
+                )}
+            </>
           )}
-          {players.length > 0 &&
-            !players.some((p) =>
-              p.name.toLowerCase().includes(search.toLowerCase()),
-            ) && <p className="empty-inline">No players match your search.</p>}
         </>
       )}
       {view === "courts" &&
@@ -586,7 +721,44 @@ export default function App({ view }: { view: View }) {
                 ← All sessions
               </button>
               <h2>{selected?.name}</h2>
-              <p className="subtitle">{selected?.venue}</p>
+              <p className="subtitle">
+                {selected?.venue} ?{" "}
+                {Math.round((selected?.elapsedDuration ?? 0) / 60000)} minutes
+              </p>
+              <details>
+                <summary>Attendance and reservation history</summary>
+                {sessionPlayers.map((p) => (
+                  <div key={p.id}>
+                    <strong>{p.name}</strong>
+                    {selected?.attendance?.[p.id]?.map((e, i) => (
+                      <p key={i}>
+                        {e.action} ?{" "}
+                        {new Intl.DateTimeFormat("en-PH", {
+                          timeZone: "Asia/Manila",
+                          dateStyle: "medium",
+                          timeStyle: "short",
+                        }).format(e.at)}
+                      </p>
+                    ))}
+                  </div>
+                ))}
+                {sessionCourts.map((c) => (
+                  <div key={c.id}>
+                    <strong>Court {c.number}</strong>
+                    {c.reservationHistory?.map((r, i) => (
+                      <p key={i}>
+                        {new Date(r.start).toLocaleString("en-PH", {
+                          timeZone: "Asia/Manila",
+                        })}{" "}
+                        ?{" "}
+                        {new Date(r.end).toLocaleString("en-PH", {
+                          timeZone: "Asia/Manila",
+                        })}
+                      </p>
+                    ))}
+                  </div>
+                ))}
+              </details>
               <LeaderboardTable
                 players={sessionPlayers}
                 matches={sessionMatches}
@@ -654,7 +826,7 @@ export default function App({ view }: { view: View }) {
                     {
                       ...data,
                       exportedAt: new Date().toISOString(),
-                      schemaVersion: 1,
+                      schemaVersion: 4,
                     },
                     null,
                     2,
@@ -683,173 +855,165 @@ export default function App({ view }: { view: View }) {
             aria-modal="true"
             aria-labelledby="modal-title"
           >
-            <button
-              className="close"
-              aria-label="Close dialog"
-              onClick={() => setModal(null)}
-            >
-              <X size={20} />
-            </button>
-            <p className="eyebrow">PADDLE NA BAI!</p>
-            <h2 id="modal-title">
-              {modal === "player"
-                ? edit
-                  ? "Edit player"
-                  : "Welcome to the crew."
-                : modal === "session"
-                  ? "Let’s set up your session."
-                  : "Call it a good session?"}
-            </h2>
-            {error && (
-              <p role="alert" className="form-error">
-                {error}
-              </p>
-            )}
-            {modal === "player" ? (
-              <form onSubmit={savePlayer}>
-                <label>
-                  Player name
-                  <input
-                    autoFocus
-                    name="name"
-                    required
-                    maxLength={60}
-                    defaultValue={edit?.name}
-                    placeholder="e.g. Alex Santos"
-                  />
-                </label>
-                <label>
-                  Status
-                  <select name="status" defaultValue={edit?.status ?? "active"}>
-                    <option value="active">Active · ready to play</option>
-                    <option value="resting">Resting</option>
-                    <option value="unavailable">Unavailable</option>
-                  </select>
-                </label>
-                <label>
-                  Profile photo{" "}
-                  <span className="muted">(optional, up to 2 MB)</span>
-                  <input
-                    type="file"
-                    name="photo"
-                    accept="image/jpeg,image/png,image/webp"
-                  />
-                </label>
-                <button className="primary full" disabled={busy}>
-                  Save player <Check size={16} />
-                </button>
-              </form>
-            ) : modal === "session" ? (
-              <form onSubmit={saveSession}>
-                <label>
-                  Session name
-                  <input
-                    autoFocus
-                    name="name"
-                    required
-                    maxLength={80}
-                    placeholder="Friday night open play"
-                  />
-                </label>
-                <label>
-                  Venue
-                  <input
-                    name="venue"
-                    required
-                    maxLength={120}
-                    placeholder="Where are we playing?"
-                  />
-                </label>
-                <div className="form-row">
-                  <label>
-                    Courts
-                    <input
-                      name="courts"
-                      type="number"
-                      min="1"
-                      max="12"
-                      required
-                      defaultValue="1"
-                    />
-                  </label>
-                  <label>
-                    Duration in minutes
-                    <input
-                      name="duration"
-                      type="number"
-                      min="1"
-                      max="1440"
-                      placeholder="Optional"
-                    />
-                  </label>
-                </div>
-                <fieldset>
-                  <legend>Choose your crew · at least 4 players</legend>
-                  <div className="crew-picker">
-                    {players.map((p) => (
-                      <label key={p.id}>
-                        <input
-                          type="checkbox"
-                          name="players"
-                          value={p.id}
-                          defaultChecked={p.status === "active"}
-                        />
-                        <Avatar player={p} />
-                        <span>
-                          {p.name}
-                          <small>{p.status}</small>
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                  {players.length < 4 && (
-                    <p className="form-error">
-                      Add {4 - players.length} more{" "}
-                      {players.length === 3 ? "player" : "players"} before
-                      creating a session.
-                    </p>
-                  )}
-                </fieldset>
-                <button
-                  className="primary full"
-                  disabled={busy || players.length < 4}
-                >
-                  Create session <ArrowUpRight size={16} />
-                </button>
-                <button
-                  type="button"
-                  className="text-button"
-                  onClick={addPlayer}
-                >
-                  <Plus size={15} />
-                  Add a player
-                </button>
-              </form>
-            ) : (
-              <>
-                <p>
-                  Completed results will be kept in History. Matches still in
-                  progress will be cancelled and won’t count in the standings.
+            <div className="modal-close-bar">
+              <button
+                className="close"
+                aria-label="Close dialog"
+                onClick={() => setModal(null)}
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p className="eyebrow">PADDLE NA BAI!</p>
+              <h2 id="modal-title">
+                {modal === "player"
+                  ? edit
+                    ? "Edit player"
+                    : "Add a player"
+                  : modal === "session"
+                    ? "Let’s set up your session."
+                    : "End this session?"}
+              </h2>
+              {error && (
+                <p role="alert" className="form-error">
+                  {error}
                 </p>
-                <div className="two-buttons">
-                  <button className="secondary" onClick={() => setModal(null)}>
-                    Keep playing
+              )}
+              {modal === "player" ? (
+                <form onSubmit={savePlayer}>
+                  <label>
+                    Player name
+                    <input
+                      autoFocus
+                      name="name"
+                      required
+                      maxLength={60}
+                      defaultValue={edit?.name}
+                      placeholder="e.g. Alex Santos"
+                    />
+                  </label>
+                  <label>
+                    Status
+                    <select
+                      name="status"
+                      defaultValue={edit?.status ?? "active"}
+                    >
+                      <option value="active">Active · ready to play</option>
+                      <option value="resting">Resting</option>
+                      <option value="unavailable">Unavailable</option>
+                    </select>
+                  </label>
+                  <label>
+                    Profile photo{" "}
+                    <span className="muted">(optional, up to 2 MB)</span>
+                    <input
+                      type="file"
+                      name="photo"
+                      accept="image/jpeg,image/png,image/webp"
+                    />
+                  </label>
+                  <button className="primary full" disabled={busy}>
+                    Save player <Check size={16} />
                   </button>
+                </form>
+              ) : modal === "session" ? (
+                <form onSubmit={saveSession}>
+                  <label>
+                    Session name
+                    <input
+                      autoFocus
+                      name="name"
+                      required
+                      maxLength={80}
+                      placeholder="Friday night open play"
+                    />
+                  </label>
+                  <label>
+                    Venue
+                    <input
+                      name="venue"
+                      required
+                      maxLength={120}
+                      defaultValue="Davao Padel Club"
+                    />
+                  </label>
+                  <ReservationSetup />
+                  <div className="form-row">
+                    <label hidden>
+                      Legacy courts
+                      <input
+                        name="legacyCourts"
+                        type="number"
+                        min="1"
+                        max="12"
+                        required
+                        defaultValue="1"
+                      />
+                    </label>
+                    <label>
+                      Duration in minutes
+                      <input
+                        name="duration"
+                        type="number"
+                        min="1"
+                        max="1440"
+                        placeholder="Optional"
+                      />
+                    </label>
+                  </div>
+                  <fieldset>
+                    <legend>Choose your crew · at least 4 players</legend>
+                    <SessionPlayerPicker
+                      players={players}
+                      groups={groups}
+                      initialGroupId={sessionGroupId}
+                      onPendingChange={setAddingSessionPlayer}
+                    />
+                    {players.length < 4 && (
+                      <p className="form-error">
+                        Add {4 - players.length} more{" "}
+                        {players.length === 3 ? "player" : "players"} before
+                        creating a session.
+                      </p>
+                    )}
+                  </fieldset>
                   <button
-                    className="primary"
-                    disabled={busy}
-                    onClick={() =>
-                      action(async () => {
-                        if (current) await endSession(current.id);
-                        setModal(null);
-                      }, "Session completed. Find the results in History.")
-                    }
+                    className="primary full"
+                    disabled={busy || addingSessionPlayer || players.length < 4}
                   >
-                    End session
+                    Create session <ArrowUpRight size={16} />
                   </button>
-                </div>
-              </>
-            )}
+                </form>
+              ) : (
+                <>
+                  <p>
+                    Completed results will be kept in History. Matches still in
+                    progress will be cancelled and won’t count in the standings.
+                  </p>
+                  <div className="two-buttons">
+                    <button
+                      className="secondary"
+                      onClick={() => setModal(null)}
+                    >
+                      Keep playing
+                    </button>
+                    <button
+                      className="primary"
+                      disabled={busy}
+                      onClick={() =>
+                        action(async () => {
+                          if (current) await endSession(current.id);
+                          setModal(null);
+                        }, "Session completed. Find the results in History.")
+                      }
+                    >
+                      End session
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </section>
         </div>
       )}
@@ -870,60 +1034,64 @@ export default function App({ view }: { view: View }) {
                 aria-modal="true"
                 aria-labelledby="player-title"
               >
-                <button
-                  className="close"
-                  aria-label="Close player details"
-                  onClick={() => setDetail(null)}
-                >
-                  <X size={20} />
-                </button>
-                <Avatar player={fresh} />
-                <h2 id="player-title">{fresh.name}</h2>
-                <span className="pill">{fresh.status}</span>
-                <div className="personal-stats">
-                  {[
-                    [s.games, "Games"],
-                    [s.wins, "Wins"],
-                    [s.losses, "Losses"],
-                    [s.rate.toFixed(0) + "%", "Win rate"],
-                    [s.streak, "Current streak"],
-                    [s.best, "Best streak"],
-                  ].map(([v, l]) => (
-                    <div key={l}>
-                      <strong>{v}</strong>
-                      <span>{l}</span>
-                    </div>
-                  ))}
-                </div>
-                <div className="two-buttons">
+                <div className="modal-close-bar">
                   <button
-                    className="secondary"
-                    onClick={() => {
-                      setEdit(fresh);
-                      setDetail(null);
-                      setModal("player");
-                    }}
+                    className="close"
+                    aria-label="Close player details"
+                    onClick={() => setDetail(null)}
                   >
-                    Edit player
+                    <X size={20} />
                   </button>
-                  <button
-                    className="danger"
-                    disabled={busy}
-                    onClick={() =>
-                      action(async () => {
-                        await removePlayer(fresh.id);
+                </div>
+                <div className="modal-body">
+                  <Avatar player={fresh} />
+                  <h2 id="player-title">{fresh.name}</h2>
+                  <span className="pill">{fresh.status}</span>
+                  <div className="personal-stats">
+                    {[
+                      [s.games, "Games"],
+                      [s.wins, "Wins"],
+                      [s.losses, "Losses"],
+                      [s.rate.toFixed(0) + "%", "Win rate"],
+                      [s.streak, "Current streak"],
+                      [s.best, "Best streak"],
+                    ].map(([v, l]) => (
+                      <div key={l}>
+                        <strong>{v}</strong>
+                        <span>{l}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="two-buttons">
+                    <button
+                      className="secondary"
+                      onClick={() => {
+                        setEdit(fresh);
                         setDetail(null);
-                      }, "Player removed.")
-                    }
-                  >
-                    Remove player
-                  </button>
+                        setModal("player");
+                      }}
+                    >
+                      Edit player
+                    </button>
+                    <button
+                      className="danger"
+                      disabled={busy}
+                      onClick={() =>
+                        action(async () => {
+                          await removePlayer(fresh.id);
+                          setDetail(null);
+                        }, "Player removed.")
+                      }
+                    >
+                      Remove player
+                    </button>
+                  </div>
+                  {error && (
+                    <p className="form-error" role="alert">
+                      {error}
+                    </p>
+                  )}
                 </div>
-                {error && (
-                  <p className="form-error" role="alert">
-                    {error}
-                  </p>
-                )}
               </section>
             </div>
           );

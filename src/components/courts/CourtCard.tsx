@@ -1,7 +1,9 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Flag, Check } from "lucide-react";
 import type { Court, Match, Player } from "@/types";
+import { assignMatch, extendReservation } from "@/lib/db";
+import { courtStatus, venueTime } from "@/lib/reservations";
 import { Avatar } from "@/components/players/PlayerCard";
 export default function CourtCard({
   court,
@@ -19,6 +21,13 @@ export default function CourtCard({
     b?: number,
   ) => Promise<void>;
 }) {
+  const [manual, setManual] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  const [error, setError] = useState("");
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
   const [a, setA] = useState("");
   const [b, setB] = useState("");
   const [busy, setBusy] = useState(false);
@@ -54,6 +63,81 @@ export default function CourtCard({
               : "Ready to play"}
         </span>
       </div>
+      <div className="court-controls">
+        <span className="pill">{courtStatus(court, now, !!live)}</span>
+        {court.reservationStart !== undefined &&
+          court.reservationEnd !== undefined && (
+            <p>
+              {venueTime(court.reservationStart)} ?{" "}
+              {venueTime(court.reservationEnd)} ?{" "}
+              {Math.max(0, Math.ceil((court.reservationEnd - now) / 60000))} min
+              remaining
+            </p>
+          )}
+        <button
+          className="text-button"
+          onClick={async () => {
+            try {
+              await extendReservation(
+                court.id,
+                Math.max(now, court.reservationEnd ?? now) + 1800000,
+              );
+              setError("");
+            } catch (e) {
+              setError(e instanceof Error ? e.message : "Could not extend.");
+            }
+          }}
+        >
+          Extend reservation 30 min
+        </button>
+        {error && <p role="alert">{error}</p>}
+      </div>
+      {!live && (
+        <>
+          <button className="text-button" onClick={() => setManual(!manual)}>
+            Manual assignment
+          </button>
+          {manual && (
+            <form
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const f = new FormData(e.currentTarget);
+                try {
+                  await assignMatch(
+                    court.sessionId,
+                    court.id,
+                    f.getAll("assigned").map(String),
+                  );
+                  setManual(false);
+                  setError("");
+                } catch (e) {
+                  setError(
+                    e instanceof Error ? e.message : "Could not assign.",
+                  );
+                }
+              }}
+            >
+              <p>First two players: Team A. Last two: Team B.</p>
+              {[0, 1, 2, 3].map((i) => (
+                <label key={i}>
+                  Player {i + 1}
+                  <select name="assigned" required defaultValue="">
+                    <option value="" disabled>
+                      Select player
+                    </option>
+                    {players.map((p) => (
+                      <option value={p.id} key={p.id}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ))}
+              <button className="primary">Assign match</button>
+            </form>
+          )}
+        </>
+      )}
       {match && match.status !== "cancelled" ? (
         <>
           <div className="court-field">

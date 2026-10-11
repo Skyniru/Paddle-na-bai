@@ -1,13 +1,13 @@
 ﻿@import "tailwindcss";
 :root {
-  --bg: #f6f6f1;
+  --bg: #f5f7fa;
   --card: #fff;
-  --text: #242922;
-  --muted: #7a8076;
-  --line: #e6e9df;
-  --lime: #c4f34b;
-  --soft: #eff1e9;
-  --field: #f4f7ec;
+  --text: #172b3a;
+  --muted: #526170;
+  --line: #dbe3e9;
+  --lime: #167366;
+  --soft: #eaf1f3;
+  --field: #f0f6f5;
 }
 html.dark {
   --bg: #171a17;
@@ -115,7 +115,7 @@ svg {
 }
 .brand small {
   display: block;
-  font-size: 7px;
+  font-size: 14px;
   letter-spacing: 1.9px;
   font-weight: 600;
   margin-top: 5px;
@@ -123,13 +123,13 @@ svg {
 }
 .brand-icon {
   background: var(--lime);
-  color: #232921;
+  color: #fff;
   width: 41px;
   height: 43px;
   border-radius: 12px;
   display: grid;
   place-items: center;
-  transform: rotate(-8deg);
+  transform: none;
 }
 .desktop-nav {
   display: flex;
@@ -139,7 +139,7 @@ svg {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 12px;
+  font-size: 14px;
   padding: 12px 14px;
   border-radius: 8px;
   color: var(--muted);
@@ -158,7 +158,7 @@ svg {
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
   white-space: nowrap;
 }
@@ -202,7 +202,7 @@ svg {
 .menu p {
   padding: 12px;
   color: var(--muted);
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.6;
 }
 main {
@@ -218,7 +218,7 @@ main {
   margin-bottom: 32px;
 }
 .eyebrow {
-  font-size: 9px;
+  font-size: 14px;
   letter-spacing: 1.7px;
   font-weight: 700;
   display: flex;
@@ -228,13 +228,13 @@ main {
   color: var(--muted);
 }
 .subtitle {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--muted);
   line-height: 1.7;
   margin-top: 10px;
 }
 .date-label {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
 }
 .primary,
@@ -248,7 +248,7 @@ main {
   min-height: 43px;
   padding: 11px 17px;
   border-radius: 9px;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   border: 1px solid transparent;
   transition:
@@ -258,7 +258,7 @@ main {
 }
 .primary {
   background: var(--lime);
-  color: #242c1d;
+  color: #fff;
 }
 .primary:hover {
   filter: brightness(0.96);
@@ -295,7 +295,7 @@ main {
 }
 .welcome .eyebrow {
   color: #b7c1a6;
-  font-size: 9px;
+  font-size: 14px;
 }
 .welcome h2 {
   font-size: 36px;
@@ -304,14 +304,14 @@ main {
 }
 .welcome p {
   color: #aab4a1;
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.8;
   margin: 16px 0 24px;
 }
 .welcome-note {
   display: block;
   color: #aab4a1;
-  font-size: 10px;
+  font-size: 14px;
   margin-top: 13px;
 }
 .court-art {
@@ -392,7 +392,7 @@ main {
 }
 .art-caption {
   display: block;
-  font-size: 8px;
+  font-size: 14px;
   letter-spacing: 2.5px;
   color: #adbd91;
   margin-top: 22px;
@@ -425,7 +425,7 @@ main {
 }
 .stat > span {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 14px;
 }
 .onboarding {
   display: grid;
@@ -444,7 +444,7 @@ main {
   right: 25px;
   top: 25px;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 14px;
 }
 .onboarding svg {
   color: var(--muted);
@@ -454,7 +454,7 @@ main {
   font-size: 15px;
 }
 .onboarding p {
-  font-size: 12px;
+  font-size: 14px;
   line-height: 1.8;
   color: var(--muted);
   min-height: 44px;
@@ -468,7 +468,7 @@ main {
   border: 0;
   background: none;
   padding: 0;
-  font-size: 11px;
+  font-size: 14px;
   font-weight: 600;
   margin-top: 20px;
 }
@@ -491,17 +491,17 @@ main {
 }
 .section-heading p {
   color: var(--muted);
-  font-size: 11px;
+  font-size: 14px;
   margin-top: 7px;
 }
 .section-heading a {
-  font-size: 11px;
+  font-size: 14px;
   display: flex;
   gap: 6px;
   align-items: center;
 }
 .count {
-  font-size: 10px;
+  font-size: 14px;
   background: var(--soft);
   padding: 4px 7px;
   border-radius: 5px;
@@ -524,7 +524,7 @@ input {
   max-width: 100%;
 }
 .round-tools select {
-  font-size: 12px;
+  font-size: 14px;
 }
 .session-card {
   display: grid;
@@ -547,7 +547,7 @@ input {
   gap: 6px;
   align-items: center;
   color: #b1bda5;
-  font-size: 12px;
+  font-size: 14px;
   margin-top: 10px;
 }
 .session-tags {
@@ -559,7 +559,7 @@ input {
   border: 1px solid #46513a;
   border-radius: 5px;
   color: #c5cdbb;
-  font-size: 10px;
+  font-size: 14px;
   padding: 5px 8px;
 }
 .timer {
@@ -569,7 +569,7 @@ input {
   min-width: 160px;
 }
 .timer small {
-  font-size: 8px;
+  font-size: 14px;
   letter-spacing: 1.5px;
   color: #aab79b;
 }
@@ -581,7 +581,7 @@ input {
 }
 .timer span {
   color: #aab79b;
-  font-size: 10px;
+  font-size: 14px;
   max-width: 180px;
   line-height: 1.5;
 }
@@ -607,10 +607,10 @@ input {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 13px;
+  font-size: 14px;
 }
 .court-number {
-  font-size: 10px;
+  font-size: 14px;
   padding: 7px;
   background: var(--soft);
   border-radius: 5px;
@@ -621,7 +621,7 @@ input {
   padding: 5px 9px;
   border-radius: 5px;
   background: var(--soft);
-  font-size: 9px;
+  font-size: 14px;
   font-weight: 600;
   color: var(--muted);
   white-space: nowrap;
@@ -655,7 +655,7 @@ input {
   min-width: 0;
 }
 .team > small {
-  font-size: 8px;
+  font-size: 14px;
   letter-spacing: 1px;
   color: var(--muted);
   display: block;
@@ -666,7 +666,7 @@ input {
   gap: 8px;
   align-items: center;
   margin-top: 12px;
-  font-size: 11px;
+  font-size: 14px;
 }
 .team strong {
   overflow-wrap: anywhere;
@@ -682,7 +682,7 @@ input {
   justify-content: center;
   background: #e7ebdc;
   color: #68764f;
-  font-size: 10px;
+  font-size: 14px;
   font-weight: 700;
   overflow: hidden;
 }
@@ -699,7 +699,7 @@ input {
   border: 1px solid var(--line);
   border-radius: 50%;
   background: var(--card);
-  font-size: 8px;
+  font-size: 14px;
   z-index: 2;
   padding: 7px;
 }
@@ -714,7 +714,7 @@ input {
   gap: 12px;
 }
 .scores label {
-  font-size: 8px;
+  font-size: 14px;
   color: var(--muted);
   display: flex;
   flex-direction: column;
@@ -733,7 +733,7 @@ input {
 }
 .court-controls > .muted {
   display: block;
-  font-size: 9px;
+  font-size: 14px;
   margin: 12px 0;
 }
 .two-buttons {
@@ -754,7 +754,7 @@ input {
   justify-content: center;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: 14px;
   color: var(--muted);
 }
 .court-empty {
@@ -775,10 +775,10 @@ input {
   color: #9ca78b;
 }
 .court-empty strong {
-  font-size: 12px;
+  font-size: 14px;
 }
 .court-empty p {
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
 }
 .waiting {
@@ -796,7 +796,7 @@ input {
   gap: 8px;
   border: 0;
   background: none;
-  font-size: 11px;
+  font-size: 14px;
 }
 .player-grid {
   display: grid;
@@ -817,17 +817,17 @@ input {
   width: 44px;
   height: 44px;
   min-width: 44px;
-  font-size: 12px;
+  font-size: 14px;
 }
 .player-card strong {
-  font-size: 13px;
+  font-size: 14px;
 }
 .player-card small {
   display: flex;
   gap: 5px;
   align-items: center;
   color: var(--muted);
-  font-size: 10px;
+  font-size: 14px;
   margin-top: 7px;
   text-transform: capitalize;
 }
@@ -849,7 +849,7 @@ input {
 }
 .search {
   width: 240px;
-  font-size: 12px;
+  font-size: 14px;
 }
 .table-wrap {
   border: 1px solid var(--line);
@@ -866,7 +866,7 @@ table {
 }
 th {
   padding: 18px 20px;
-  font-size: 9px;
+  font-size: 14px;
   text-transform: uppercase;
   letter-spacing: 0.7px;
   color: var(--muted);
@@ -875,11 +875,11 @@ th {
 }
 td {
   padding: 16px 20px;
-  font-size: 12px;
+  font-size: 14px;
   border-top: 1px solid var(--line);
 }
 td small {
-  font-size: 9px;
+  font-size: 14px;
   color: var(--muted);
 }
 .table-player {
@@ -888,11 +888,11 @@ td small {
   align-items: center;
   border: 0;
   background: none;
-  font-size: 12px;
+  font-size: 14px;
 }
 .rank {
   width: 22px;
-  font-size: 11px;
+  font-size: 14px;
   text-align: center;
   color: var(--muted);
 }
@@ -903,7 +903,7 @@ td small {
   border-radius: 5px;
 }
 .footnote {
-  font-size: 10px;
+  font-size: 14px;
   color: var(--muted);
   margin-top: 17px;
   line-height: 1.6;
@@ -934,7 +934,7 @@ td small {
 .history-card small {
   display: block;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 14px;
   margin-top: 8px;
   line-height: 1.6;
 }
@@ -967,7 +967,7 @@ td small {
 }
 .empty-state p {
   color: var(--muted);
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.8;
   max-width: 450px;
 }
@@ -998,7 +998,7 @@ td small {
   margin-top: 45px;
   border-top: 1px solid var(--line);
   padding: 22px 0;
-  font-size: 10px;
+  font-size: 14px;
   color: var(--muted);
 }
 .footer > span {
@@ -1013,7 +1013,7 @@ td small {
   gap: 7px;
   align-items: center;
   padding: 8px 0;
-  font-size: 11px;
+  font-size: 14px;
   color: var(--muted);
 }
 .bottom-nav {
@@ -1025,7 +1025,7 @@ td small {
   gap: 10px;
   padding: 13px 16px;
   border-radius: 9px;
-  font-size: 12px;
+  font-size: 14px;
   margin-bottom: 20px;
   line-height: 1.5;
 }
@@ -1072,7 +1072,7 @@ td small {
   padding-right: 15px;
 }
 .modal > p:not(.eyebrow) {
-  font-size: 13px;
+  font-size: 14px;
   line-height: 1.8;
   color: var(--muted);
 }
@@ -1093,14 +1093,14 @@ td small {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  font-size: 11px;
+  font-size: 14px;
   margin-bottom: 18px;
   font-weight: 600;
 }
 .modal input,
 .modal select {
   width: 100%;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 400;
 }
 .form-row {
@@ -1119,7 +1119,7 @@ fieldset {
   margin: 7px 0 20px;
 }
 legend {
-  font-size: 11px;
+  font-size: 14px;
   margin-bottom: 13px;
 }
 .crew-picker {
@@ -1133,7 +1133,7 @@ legend {
   align-items: center;
   gap: 10px;
   padding: 10px 13px;
-  font-size: 12px;
+  font-size: 14px;
   border-bottom: 1px solid var(--line);
 }
 .crew-picker input {
@@ -1143,12 +1143,12 @@ legend {
 }
 .crew-picker small {
   display: block;
-  font-size: 9px;
+  font-size: 14px;
   color: var(--muted);
   margin-top: 4px;
 }
 .form-error {
-  font-size: 11px;
+  font-size: 14px;
   padding: 10px;
   border-radius: 7px;
   margin: 10px 0;
@@ -1169,7 +1169,7 @@ legend {
   font-size: 23px;
 }
 .personal-stats span {
-  font-size: 9px;
+  font-size: 14px;
   color: var(--muted);
   display: block;
   margin-top: 6px;
@@ -1237,7 +1237,7 @@ legend {
     gap: 5px;
   }
   .team strong {
-    font-size: 10px;
+    font-size: 14px;
   }
   .player-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -1258,7 +1258,7 @@ legend {
     font-size: 16px;
   }
   .brand small {
-    font-size: 6px;
+    font-size: 14px;
     letter-spacing: 1.5px;
   }
   .brand-icon {
@@ -1286,7 +1286,7 @@ legend {
     justify-content: center;
     min-height: 48px;
     flex: 1;
-    font-size: 9px;
+    font-size: 14px;
     color: var(--muted);
   }
   .bottom-nav .selected {
@@ -1312,12 +1312,12 @@ legend {
     gap: 12px;
   }
   .page-heading .eyebrow {
-    font-size: 8px;
+    font-size: 14px;
     letter-spacing: 1.1px;
     margin-bottom: 10px;
   }
   .page-heading .subtitle {
-    font-size: 12px;
+    font-size: 14px;
     max-width: 260px;
   }
   .page-heading > .primary {
@@ -1341,13 +1341,13 @@ legend {
     z-index: 2;
   }
   .welcome p {
-    font-size: 11px;
+    font-size: 14px;
     max-width: 240px;
     position: relative;
     z-index: 2;
   }
   .welcome .eyebrow {
-    font-size: 7px;
+    font-size: 14px;
   }
   .court-art {
     position: absolute;
@@ -1361,10 +1361,10 @@ legend {
     z-index: 2;
   }
   .welcome .primary {
-    font-size: 11px;
+    font-size: 14px;
   }
   .welcome-note {
-    font-size: 9px;
+    font-size: 14px;
   }
   .stats-grid {
     grid-template-columns: repeat(2, 1fr);
@@ -1383,7 +1383,7 @@ legend {
     width: 17px;
   }
   .stat > span {
-    font-size: 10px;
+    font-size: 14px;
   }
   .onboarding {
     grid-template-columns: 1fr;
@@ -1412,14 +1412,14 @@ legend {
     font-size: 23px;
   }
   .session-card .eyebrow {
-    font-size: 8px;
+    font-size: 14px;
   }
   .session-tags {
     margin-top: 16px;
     gap: 6px;
   }
   .session-tags span {
-    font-size: 8px;
+    font-size: 14px;
   }
   .timer {
     min-width: 0;
@@ -1429,12 +1429,12 @@ legend {
     font-size: 23px;
   }
   .timer small {
-    font-size: 7px;
+    font-size: 14px;
   }
   .timer span {
     max-width: 110px;
     text-align: right;
-    font-size: 8px;
+    font-size: 14px;
   }
   .session-action {
     grid-column: 1 / -1;
@@ -1459,10 +1459,10 @@ legend {
   .round-tools select {
     flex: 1;
     min-width: 0;
-    font-size: 11px;
+    font-size: 14px;
   }
   .round-tools .primary {
-    font-size: 11px;
+    font-size: 14px;
   }
   .court-grid {
     grid-template-columns: 1fr;
@@ -1477,7 +1477,7 @@ legend {
     gap: 32px;
   }
   .team strong {
-    font-size: 11px;
+    font-size: 14px;
   }
   .team > div {
     gap: 9px;
@@ -1508,11 +1508,11 @@ legend {
     padding: 14px 15px;
   }
   td {
-    font-size: 11px;
+    font-size: 14px;
   }
   .table-player {
     gap: 8px;
-    font-size: 11px;
+    font-size: 14px;
   }
   .table-player .avatar {
     width: 29px;
@@ -1524,10 +1524,10 @@ legend {
     align-items: flex-start;
     flex-direction: column;
     gap: 10px;
-    font-size: 9px;
+    font-size: 14px;
   }
   .footer .text-button {
-    font-size: 10px;
+    font-size: 14px;
   }
   .waiting-players {
     gap: 15px;
@@ -1549,17 +1549,17 @@ legend {
     font-size: 23px;
   }
   .empty-state p {
-    font-size: 12px;
+    font-size: 14px;
   }
   .history-card {
     padding: 18px;
     gap: 12px;
   }
   .history-card strong {
-    font-size: 13px;
+    font-size: 14px;
   }
   .history-card small {
-    font-size: 10px;
+    font-size: 14px;
   }
   .desktop-only {
     display: none;
@@ -1570,7 +1570,7 @@ legend {
   }
   .two-buttons .secondary,
   .two-buttons .primary {
-    font-size: 11px;
+    font-size: 14px;
   }
   .snaps {
     min-height: 370px;
@@ -1582,3 +1582,963 @@ legend {
     transition: none !important;
   }
 }
+
+/* Comfortable, consistent controls for desktop and mobile. */
+html {
+  color-scheme: light;
+}
+html.dark {
+  color-scheme: dark;
+  --lime: #237f72;
+  --muted: #b8c4bc;
+}
+body {
+  font-size: 16px;
+  line-height: 1.5;
+}
+.header {
+  min-height: 88px;
+  height: auto;
+  padding-block: 16px;
+  gap: 16px;
+}
+.brand small {
+  font-size: 10px;
+  letter-spacing: 1px;
+}
+.desktop-nav a {
+  min-height: 44px;
+  padding: 10px 12px;
+}
+.desktop-nav .selected {
+  background: var(--field);
+  color: var(--text);
+  box-shadow: inset 0 -3px var(--lime);
+}
+.icon-button,
+.close {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 10px;
+}
+main {
+  padding-top: 36px;
+}
+h1 {
+  letter-spacing: -1px;
+}
+.eyebrow {
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+.subtitle {
+  font-size: 16px;
+  max-width: 65ch;
+}
+.primary,
+.secondary,
+.dark-button,
+.danger {
+  min-height: 48px;
+  font-size: 15px;
+  border-radius: 10px;
+  white-space: normal;
+}
+input,
+select,
+.modal input,
+.modal select {
+  min-height: 48px;
+  font-size: 16px;
+}
+.welcome {
+  background: var(--card);
+  color: var(--text);
+  border: 1px solid var(--line);
+  padding: 32px;
+}
+.welcome h2 {
+  font-size: clamp(26px, 3vw, 34px);
+}
+.welcome p,
+.welcome-note,
+.welcome .eyebrow {
+  color: var(--muted);
+  font-size: 14px;
+}
+.court-art {
+  transform: none;
+  opacity: 0.85;
+}
+.onboarding h3 {
+  margin-top: 16px;
+  font-size: 18px;
+}
+.onboarding > div > span {
+  display: none;
+}
+.onboarding p {
+  max-width: none;
+  min-height: 72px;
+}
+.onboarding a,
+.onboarding button,
+.text-button {
+  min-height: 44px;
+}
+.stat,
+.onboarding > div,
+.court-card,
+.player-card {
+  box-shadow: 0 2px 8px #172b3a04;
+}
+.scores input {
+  min-height: 48px;
+  height: auto;
+  width: 76px;
+}
+.session-card {
+  background: #203e3b;
+}
+.session-card p,
+.timer small,
+.timer span {
+  color: #d1e2dd;
+}
+.team > small,
+.scores label,
+.pill,
+.timer small {
+  letter-spacing: 0.3px;
+  font-size: 13px;
+}
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  padding: 12px 20px;
+  background: var(--card);
+  z-index: 100;
+  border: 2px solid var(--lime);
+  transform: translateY(-150%);
+}
+.skip-link:focus {
+  transform: translateY(0);
+}
+@media (max-width: 1100px) and (min-width: 761px) {
+  .header {
+    flex-wrap: wrap;
+  }
+  .desktop-nav {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+  }
+}
+@media (max-width: 760px) {
+  .header {
+    padding: 12px 16px;
+    min-height: 76px;
+    gap: 8px;
+  }
+  .brand {
+    font-size: 15px;
+    gap: 8px;
+  }
+  .brand small {
+    display: none;
+  }
+  .header-actions {
+    gap: 4px;
+  }
+  main {
+    padding: 26px 16px 110px;
+  }
+  .page-heading {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 16px;
+  }
+  .page-heading > div {
+    width: 100%;
+  }
+  .date-label {
+    display: none;
+  }
+  .welcome {
+    padding: 24px;
+  }
+  .welcome .primary {
+    width: 100%;
+  }
+  .court-art {
+    display: none;
+  }
+  .onboarding p {
+    min-height: 0;
+  }
+  .bottom-nav {
+    height: auto;
+    min-height: 76px;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+  }
+  .bottom-nav a {
+    min-height: 60px;
+    font-size: 12px;
+    flex: 1;
+    min-width: 0;
+    gap: 5px;
+  }
+  .bottom-nav .selected {
+    color: var(--text);
+    background: var(--field);
+    border-radius: 10px;
+  }
+  .round-tools {
+    flex-wrap: wrap;
+  }
+  .round-tools .primary {
+    flex: 1;
+  }
+  .session-card {
+    grid-template-columns: 1fr;
+  }
+  .timer {
+    align-items: flex-start;
+  }
+  .timer span {
+    max-width: none;
+    text-align: left;
+  }
+  .session-tags {
+    flex-wrap: wrap;
+  }
+  .team > div {
+    align-items: flex-start;
+    flex-wrap: wrap;
+  }
+  .team strong {
+    font-size: 14px;
+  }
+  .modal {
+    padding: 28px 20px;
+  }
+}
+@media (max-width: 760px) {
+  .page-heading > .primary {
+    font-size: 15px;
+    min-height: 48px;
+    padding: 11px 17px;
+  }
+  .bottom-nav .selected svg {
+    color: #fff;
+  }
+}
+
+.groups-section,
+.roster-section {
+  margin-block: 28px;
+}
+.group-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+  gap: 16px;
+}
+.group-card,
+.group-editor,
+.roster-list {
+  border: 1px solid var(--line);
+  background: var(--card);
+  border-radius: 14px;
+}
+.group-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 22px;
+  text-align: left;
+  min-width: 0;
+}
+.group-card strong {
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+.group-card small {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.group-link {
+  font-weight: 600;
+  margin-top: 8px;
+}
+.group-editor {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  margin-block: 16px;
+}
+.group-editor > label,
+.picker-filters label,
+.group-search {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-weight: 600;
+}
+.group-search {
+  max-width: 440px;
+  margin-bottom: 16px;
+}
+.picker-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-block: 12px;
+}
+.picker-filters label {
+  min-width: 0;
+  font-size: 14px;
+}
+.picker-summary {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  margin-bottom: 12px;
+}
+.player-picker .crew-picker {
+  max-height: 300px;
+  overflow-y: auto;
+}
+.player-picker .crew-picker input {
+  min-height: 20px;
+  width: 20px;
+  accent-color: var(--lime);
+}
+.player-picker .crew-picker label {
+  min-height: 64px;
+}
+.roster-list {
+  overflow: hidden;
+}
+.roster-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--line);
+}
+.roster-row:last-child {
+  border-bottom: 0;
+}
+.roster-row > span {
+  min-width: 0;
+}
+.roster-row strong {
+  overflow-wrap: anywhere;
+}
+.roster-row small {
+  display: block;
+  color: var(--muted);
+  margin-top: 4px;
+  font-size: 14px;
+}
+@media (max-width: 760px) {
+  .picker-filters {
+    grid-template-columns: 1fr;
+  }
+  .group-editor {
+    padding: 18px;
+  }
+  .roster-row {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 16px;
+  }
+  .roster-row select {
+    width: 100%;
+  }
+}
+.selection-names {
+  font-size: 14px;
+  color: var(--muted);
+  margin-top: 12px;
+  overflow-wrap: anywhere;
+}
+
+/* Recognizable group logos and tap-to-pick player tiles. */
+.group-avatar {
+  width: 88px;
+  height: 88px;
+  min-width: 88px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--field);
+  color: var(--text);
+  border: 2px solid var(--line);
+  font-size: 26px;
+  font-weight: 700;
+}
+.group-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.group-grid {
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 210px), 1fr));
+}
+.group-card {
+  align-items: center;
+  text-align: center;
+  gap: 10px;
+}
+.group-card h3 {
+  overflow-wrap: anywhere;
+  font-size: 18px;
+}
+.group-card > span:not(.group-avatar) {
+  color: var(--muted);
+  font-size: 14px;
+}
+.group-card-actions {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 8px;
+  margin-top: 8px;
+}
+.group-photo-field {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.group-photo-field label {
+  display: flex;
+  flex: 1;
+  min-width: min(100%, 220px);
+  flex-direction: column;
+  gap: 8px;
+  font-weight: 600;
+}
+.group-photo-field small {
+  color: var(--muted);
+  font-weight: 400;
+}
+.group-photo-field input {
+  width: 100%;
+}
+.group-picker {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 6px 3px 14px;
+  margin-block: 12px;
+}
+.group-choice {
+  border: 2px solid transparent;
+  border-radius: 14px;
+  background: transparent;
+  padding: 10px 8px;
+  width: 116px;
+  flex: 0 0 116px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.group-choice > span:not(.group-avatar) {
+  font-weight: 600;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.group-choice small {
+  color: var(--muted);
+  font-size: 12px;
+}
+.group-choice .group-avatar {
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  font-size: 20px;
+}
+.group-choice[aria-pressed="true"] {
+  border-color: var(--lime);
+  background: var(--field);
+}
+.group-selection-heading {
+  padding: 16px;
+  border-radius: 12px;
+  background: var(--field);
+}
+.group-selection-heading p {
+  color: var(--muted);
+  font-size: 14px;
+  margin-top: 6px;
+}
+.group-selection-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+.player-picker .picker-filters {
+  grid-template-columns: 1fr;
+}
+.player-picker .crew-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(125px, 1fr));
+  gap: 10px;
+  padding: 4px;
+  max-height: 360px;
+}
+.player-picker .crew-picker .player-choice {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 28px 12px 16px;
+  min-height: 146px;
+  margin: 0;
+  border: 2px solid var(--line);
+  background: var(--card);
+  border-radius: 12px;
+  cursor: pointer;
+}
+.player-choice > input[type="checkbox"] {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+.player-choice .avatar {
+  width: 48px;
+  height: 48px;
+  font-size: 16px;
+}
+.player-choice > span:last-child {
+  overflow-wrap: anywhere;
+  width: 100%;
+}
+.player-choice small {
+  display: block;
+  color: var(--muted);
+  margin-top: 4px;
+}
+.player-picker .crew-picker .is-picked {
+  border-color: var(--lime);
+  background: var(--field);
+}
+.player-choice:has(input:focus-visible) {
+  outline: 3px solid var(--lime);
+  outline-offset: 2px;
+}
+@media (max-width: 760px) {
+  .group-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+  .group-card {
+    padding: 18px 12px;
+  }
+  .group-card .group-avatar {
+    width: 72px;
+    height: 72px;
+    min-width: 72px;
+  }
+  .group-card-actions .primary,
+  .group-card-actions .secondary {
+    font-size: 14px;
+    padding: 10px 8px;
+  }
+  .group-selection-actions > button {
+    flex: 1;
+  }
+}
+.group-identity {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border-radius: 10px;
+}
+.group-identity > span:not(.group-avatar) {
+  color: var(--muted);
+  font-size: 14px;
+}
+.group-identity h3 {
+  max-width: 100%;
+}
+.skip-link {
+  opacity: 0;
+  pointer-events: none;
+}
+.skip-link:focus {
+  opacity: 1;
+  pointer-events: auto;
+}
+.inline-player-add {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--field);
+  margin-block: 16px;
+}
+.inline-player-add > label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex: 1;
+  min-width: min(100%, 180px);
+  font-weight: 600;
+  font-size: 14px;
+}
+.inline-player-add > p {
+  width: 100%;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+.inline-player-add > p[role="alert"] {
+  color: #bf4a4a;
+}
+
+/* Quieter forms: one main action, compact choices, and clear spacing. */
+.group-editor {
+  max-width: 780px;
+  margin: 20px auto 32px;
+  padding: 28px;
+  gap: 20px;
+  box-shadow: 0 6px 24px #172b3a06;
+}
+.group-editor > h3 {
+  font-size: 22px;
+  letter-spacing: -0.4px;
+}
+.group-editor > p.muted {
+  margin-top: -12px;
+  font-size: 14px;
+}
+.group-editor > label {
+  font-size: 14px;
+}
+.group-photo-field {
+  padding: 16px 0;
+  border-top: 1px solid var(--line);
+}
+.group-photo-field .group-avatar {
+  width: 64px;
+  height: 64px;
+  min-width: 64px;
+  font-size: 20px;
+  border-width: 1px;
+}
+.group-photo-field label {
+  font-size: 14px;
+}
+.group-photo-field input {
+  background: transparent;
+  border: 0;
+  padding: 8px 0;
+  min-height: 40px;
+  font-size: 14px;
+}
+.group-photo-field input::file-selector-button {
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 8px;
+  margin-right: 10px;
+  font: inherit;
+  cursor: pointer;
+}
+.group-photo-field small {
+  font-size: 12px;
+}
+.editor-divider {
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+}
+.group-editor > .two-buttons {
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  margin-top: 0;
+}
+.group-card {
+  border-radius: 16px;
+  padding: 24px 20px 16px;
+  box-shadow: none;
+}
+.group-card-actions {
+  gap: 4px;
+}
+.group-card-actions .text-button {
+  justify-content: center;
+  color: var(--muted);
+  font-weight: 500;
+}
+.group-picker {
+  gap: 8px;
+  margin: 0 0 20px;
+  padding-bottom: 8px;
+}
+.group-choice {
+  width: 100px;
+  flex-basis: 100px;
+  padding: 10px 6px;
+  border-width: 1px;
+  gap: 6px;
+}
+.group-choice .group-avatar {
+  width: 54px;
+  height: 54px;
+  min-width: 54px;
+  font-size: 18px;
+  border-width: 1px;
+}
+.group-choice[aria-pressed="true"] {
+  border-color: var(--line);
+  background: var(--soft);
+}
+.group-choice[aria-pressed="true"] .group-avatar {
+  border: 2px solid var(--lime);
+}
+.group-selection-heading {
+  background: transparent;
+  padding: 0 0 12px;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 16px;
+}
+.group-selection-heading h3 {
+  font-size: 16px;
+}
+.group-selection-heading p {
+  font-size: 14px;
+}
+.group-selection-actions {
+  gap: 16px;
+  margin-top: 4px;
+}
+.group-selection-actions .text-button {
+  min-height: 44px;
+  padding: 4px 0;
+  font-weight: 600;
+}
+.inline-player-add {
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  gap: 8px 10px;
+  margin: 0 0 20px;
+}
+.inline-player-add > p {
+  font-size: 13px;
+}
+.inline-player-add > .secondary {
+  border-color: var(--line);
+  background: var(--soft);
+  padding-inline: 16px;
+}
+.inline-player-add > p[role="status"] {
+  font-size: 13px;
+  color: var(--muted);
+}
+.picker-summary {
+  gap: 8px 14px;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+.picker-summary > span {
+  margin-right: auto;
+  font-weight: 600;
+}
+.picker-summary .text-button {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 4px 0;
+}
+.player-picker .crew-picker {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  max-height: 320px;
+  border: 0;
+  padding: 3px;
+}
+.player-picker .crew-picker .player-choice {
+  flex-direction: row;
+  align-items: center;
+  justify-content: flex-start;
+  text-align: left;
+  gap: 10px;
+  min-height: 74px;
+  padding: 12px 38px 12px 12px;
+  border-width: 1px;
+  border-radius: 10px;
+  font-weight: 500;
+}
+.player-choice > input[type="checkbox"] {
+  top: 50%;
+  right: 12px;
+  transform: translateY(-50%);
+}
+.player-choice .avatar {
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  font-size: 12px;
+}
+.player-choice > span:last-child {
+  min-width: 0;
+  width: auto;
+  font-size: 14px;
+}
+.player-choice small {
+  font-size: 12px;
+  margin-top: 2px;
+  font-weight: 400;
+}
+.player-picker .crew-picker .is-picked {
+  border-color: var(--lime);
+  background: var(--field);
+}
+.player-choice:has(input:focus-visible) {
+  outline-width: 2px;
+}
+.selection-details {
+  margin-top: 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+.selection-details summary {
+  cursor: pointer;
+  min-height: 44px;
+  padding-block: 12px;
+}
+.selection-details summary:focus-visible {
+  outline: 2px solid var(--lime);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+.selection-names {
+  margin-top: 0;
+  line-height: 1.7;
+}
+.modal {
+  width: min(100%, 620px);
+}
+.modal form > fieldset {
+  border: 0;
+  padding: 20px 0 0;
+  border-top: 1px solid var(--line);
+}
+.modal legend {
+  padding: 0 0 12px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.modal .player-picker {
+  margin-top: 12px;
+}
+@media (max-width: 760px) {
+  .group-editor {
+    padding: 22px 18px;
+    gap: 18px;
+  }
+  .group-card {
+    padding: 20px 12px 12px;
+  }
+  .player-picker .crew-picker {
+    grid-template-columns: 1fr;
+    max-height: 300px;
+  }
+  .player-picker .crew-picker .player-choice {
+    min-height: 68px;
+  }
+  .group-selection-actions > button {
+    flex: none;
+  }
+  .modal {
+    padding: 28px 20px;
+  }
+  .group-photo-field {
+    align-items: flex-start;
+    gap: 12px;
+  }
+}
+
+/* Keep exit controls separate from scrolling form content. */
+.modal.modal {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+.modal-close-bar {
+  display: flex;
+  justify-content: flex-end;
+  flex-shrink: 0;
+  padding: 12px 16px 4px;
+  background: var(--card);
+  border-bottom: 1px solid var(--line);
+  z-index: 2;
+}
+.modal-close-bar .close {
+  position: static;
+  flex-shrink: 0;
+}
+.modal-body {
+  padding: 20px 28px 28px;
+  overflow-y: auto;
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+.modal-body > .avatar {
+  width: 65px;
+  height: 65px;
+  font-size: 18px;
+  margin-bottom: 16px;
+}
+.group-editor-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  background: var(--card);
+  padding-block: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.group-editor-heading h3 {
+  font-size: 22px;
+  letter-spacing: -0.4px;
+}
+@media (max-width: 760px) {
+  .modal-body {
+    padding: 20px;
+  }
+}
+
+/* Attendance controls stay within narrow court and roster cards. */
+.roster-row { flex-wrap: wrap; gap: 12px; }
+.roster-row > div { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.roster-row details { width: 100%; }
+.roster-row details small { display: block; }
+.court-card form { padding: 16px; }
+@media (max-width: 600px) { .roster-row > div { width: 100%; } .form-row { flex-wrap: wrap; } .form-row > label { min-width: 90px; } }

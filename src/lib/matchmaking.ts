@@ -1,4 +1,4 @@
-import type { Player, Match, Mode } from "@/types";
+import type { Player, Match, Mode, Session } from "@/types";
 import { statistics } from "./statistics";
 import { opportunities, lastPlayed } from "./rotation";
 export function generateTeams(
@@ -7,6 +7,7 @@ export function generateTeams(
   mode: Mode,
   count: number,
   courtIds: string[] = [],
+  session?: Session,
 ) {
   const busy = new Set(
     matches
@@ -16,10 +17,89 @@ export function generateTeams(
   const pool = players
     .filter((p) => p.status === "active" && !busy.has(p.id))
     .map((p) => ({ p, tie: Math.random() }));
+  const eligibleHistory = (id: string) => {
+    const events = session?.attendance?.[id];
+    if (!events) return matches;
+    return matches.filter(
+      (m) =>
+        (m.eligiblePlayerIds === undefined ||
+          m.eligiblePlayerIds.includes(id)) &&
+        events.filter((e) => e.at <= m.createdAt).at(-1)?.action !==
+          "check-out" &&
+        events.some((e) => e.at <= m.createdAt),
+    );
+  };
+  const rests = (id: string) =>
+    session
+      ? new Set(
+          eligibleHistory(id)
+            .filter(
+              (m) =>
+                m.status !== "cancelled" &&
+                ![...m.teamA, ...m.teamB].includes(id),
+            )
+            .map((m) => m.createdAt),
+        ).size
+      : 0;
+  const consecutiveRests = (id: string) => {
+    if (!session) return 0;
+    const rounds = [
+      ...new Set(
+        eligibleHistory(id)
+          .filter((m) => m.status !== "cancelled")
+          .map((m) => m.createdAt),
+      ),
+    ].sort((a, b) => b - a);
+    let count = 0;
+    for (const at of rounds) {
+      if (
+        matches.some(
+          (m) =>
+            m.createdAt === at &&
+            m.status !== "cancelled" &&
+            [...m.teamA, ...m.teamB].includes(id),
+        )
+      )
+        break;
+      count++;
+    }
+    return count;
+  };
+  const restingTime = (id: string) => {
+    const events = session?.attendance?.[id];
+    if (!events) return Date.now() - lastPlayed(id, matches);
+    let total = 0;
+    for (let i = 0; i < events.length; i++) {
+      if (events[i].action === "check-out") continue;
+      const start = events[i].at;
+      const end = events[i + 1]?.at ?? Date.now();
+      const playing = matches
+        .filter(
+          (m) =>
+            m.status !== "cancelled" && [...m.teamA, ...m.teamB].includes(id),
+        )
+        .reduce(
+          (sum, m) =>
+            sum +
+            Math.max(
+              0,
+              Math.min(end, m.endedAt ?? Date.now()) -
+                Math.max(start, m.createdAt),
+            ),
+          0,
+        );
+      total += Math.max(0, end - start - playing);
+    }
+    return total;
+  };
   pool.sort((a, b) =>
     mode === "random"
       ? a.tie - b.tie
-      : opportunities(a.p.id, matches) - opportunities(b.p.id, matches) ||
+      : opportunities(a.p.id, eligibleHistory(a.p.id)) -
+          opportunities(b.p.id, eligibleHistory(b.p.id)) ||
+        consecutiveRests(b.p.id) - consecutiveRests(a.p.id) ||
+        rests(b.p.id) - rests(a.p.id) ||
+        restingTime(b.p.id) - restingTime(a.p.id) ||
         lastPlayed(a.p.id, matches) - lastPlayed(b.p.id, matches) ||
         a.tie - b.tie,
   );

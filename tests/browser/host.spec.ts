@@ -33,12 +33,29 @@ test("mobile host flow persists results, rotates the waiting crew, and works off
   await page.getByRole("button", { name: "Create your first session" }).click();
   await page.getByLabel("Session name").fill("Friday crew");
   await page.getByLabel("Venue", { exact: true }).fill("Cebu Padel Club");
+  await page.getByLabel("Courts", { exact: true }).fill("1");
+  await page.getByLabel("Default start").fill("00:00");
+  await page.getByLabel("Default end").fill("23:59");
   await page
     .getByRole("button", { name: "Create session", exact: true })
     .click();
   await page
     .getByRole("button", { name: "Start session", exact: true })
     .click();
+  while (
+    await page.getByRole("button", { name: "Check in", exact: true }).count()
+  ) {
+    const remaining = await page
+      .getByRole("button", { name: "Check in", exact: true })
+      .count();
+    await page
+      .getByRole("button", { name: "Check in", exact: true })
+      .first()
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Check in", exact: true }),
+    ).toHaveCount(remaining - 1);
+  }
   await page
     .getByRole("button", { name: "Generate round", exact: true })
     .click();
@@ -54,6 +71,20 @@ test("mobile host flow persists results, rotates the waiting crew, and works off
   await expect(page.getByText("Team A won 6 – 3")).toBeVisible();
   await page.reload();
   await expect(page.getByText("Team A won 6 – 3")).toBeVisible();
+  while (
+    await page.getByRole("button", { name: "Check in", exact: true }).count()
+  ) {
+    const remaining = await page
+      .getByRole("button", { name: "Check in", exact: true })
+      .count();
+    await page
+      .getByRole("button", { name: "Check in", exact: true })
+      .first()
+      .click();
+    await expect(
+      page.getByRole("button", { name: "Check in", exact: true }),
+    ).toHaveCount(remaining - 1);
+  }
   await page
     .getByRole("button", { name: "Generate round", exact: true })
     .click();
