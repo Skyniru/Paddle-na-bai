@@ -1,7 +1,9 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import OfflineStatus from "./OfflineStatus";
+import DeveloperAbout from "./DeveloperAbout";
 import {
   CircleDot,
   Grid2X2,
@@ -20,32 +22,78 @@ const links = [
   ["/", "Play", CircleDot],
   ["/courts", "Courts", Grid2X2],
   ["/leaderboard", "Leaderboard", Trophy],
-  ["/snaps", "Snaps", Camera],
+  ["/history", "History", History],
   ["/players", "Players", Users],
 ] as const;
 export default function Shell({ children }: { children: React.ReactNode }) {
-  const path = usePathname();
-  const [menu, setMenu] = useState(false);
+  const path = usePathname().replace(/\/$/, "") || "/";
+  const [menuRoute, setMenuRoute] = useState<string | null>(null);
+  const menu = menuRoute === path;
+  useEffect(() => {
+    if (menuRoute === null || menuRoute === path) return;
+    const frame = requestAnimationFrame(() => setMenuRoute(null));
+    return () => cancelAnimationFrame(frame);
+  }, [path, menuRoute]);
+  const menuButton = useRef<HTMLButtonElement>(null);
+  const menuPanel = useRef<HTMLDivElement>(null);
+  function closeMenu(restoreFocus = false) {
+    setMenuRoute(null);
+    if (restoreFocus) menuButton.current?.focus();
+  }
+  useEffect(() => {
+    if (!menu) return;
+    const escape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMenuRoute(null);
+        menuButton.current?.focus();
+      }
+    };
+    const outside = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (
+        !menuPanel.current?.contains(target) &&
+        !menuButton.current?.contains(target)
+      )
+        setMenuRoute(null);
+    };
+    document.addEventListener("keydown", escape);
+    document.addEventListener("pointerdown", outside);
+    return () => {
+      document.removeEventListener("keydown", escape);
+      document.removeEventListener("pointerdown", outside);
+    };
+  }, [menu]);
   const [dark, setDark] = useState(false);
   const [offline, setOffline] = useState(false);
   useEffect(() => {
-    const saved = localStorage.getItem("paddle-theme");
-    const value = saved
-      ? saved === "dark"
-      : matchMedia("(prefers-color-scheme: dark)").matches;
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem("paddle-theme");
+    } catch {
+      /* Theme still works when preference storage is blocked. */
+    }
+    const preference = matchMedia("(prefers-color-scheme: dark)");
+    const value = saved === "dark" || (saved !== "light" && preference.matches);
+    const systemTheme = () => {
+      let current: string | null = null;
+      try {
+        current = localStorage.getItem("paddle-theme");
+      } catch {
+        /* Use system preference. */
+      }
+      if (current === "dark" || current === "light") return;
+      setDark(preference.matches);
+      document.documentElement.classList.toggle("dark", preference.matches);
+    };
+    preference.addEventListener("change", systemTheme);
     requestAnimationFrame(() => setDark(value));
     document.documentElement.classList.toggle("dark", value);
     const update = () => setOffline(!navigator.onLine);
     requestAnimationFrame(update);
     window.addEventListener("online", update);
     window.addEventListener("offline", update);
-    if (
-      process.env.NODE_ENV === "production" &&
-      "serviceWorker" in navigator &&
-      window.isSecureContext
-    )
-      navigator.serviceWorker.register("/sw.js").catch(console.error);
     return () => {
+      preference.removeEventListener("change", systemTheme);
       window.removeEventListener("online", update);
       window.removeEventListener("offline", update);
     };
@@ -53,7 +101,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
   function theme() {
     const v = !dark;
     setDark(v);
-    localStorage.setItem("paddle-theme", v ? "dark" : "light");
+    try {
+      localStorage.setItem("paddle-theme", v ? "dark" : "light");
+    } catch {
+      /* Keep the in-memory theme. */
+    }
     document.documentElement.classList.toggle("dark", v);
   }
   return (
@@ -64,10 +116,11 @@ export default function Shell({ children }: { children: React.ReactNode }) {
       <header className="header">
         <Link href="/" className="brand">
           <span className="brand-icon">
-            <CircleDot size={25} />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icons/icon-192.png" alt="" width="48" height="48" />
           </span>
-          <span>
-            PADDLE <b>NA BAI!</b>
+          <span className="brand-copy">
+            <span className="brand-name">PaddleBai</span>
             <small>GOOD GAMES. GREAT COMPANY.</small>
           </span>
         </Link>
@@ -78,6 +131,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
               aria-current={path === href ? "page" : undefined}
               key={href}
               href={href}
+              onClick={() => closeMenu()}
             >
               <Icon size={17} />
               {label}
@@ -98,20 +152,27 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           </button>
           <button
             className="icon-button"
-            onClick={() => setMenu(!menu)}
+            ref={menuButton}
+            onClick={() => setMenuRoute(menu ? null : path)}
             aria-label="Open secondary menu"
             aria-expanded={menu}
+            aria-controls="secondary-navigation"
           >
             {menu ? <X size={21} /> : <Menu size={21} />}
           </button>
         </div>
         {menu && (
-          <div className="menu">
-            <Link href="/history" onClick={() => setMenu(false)}>
-              <History size={17} />
-              Session history
+          <div ref={menuPanel} id="secondary-navigation" className="menu">
+            <Link href="/snaps" onClick={() => closeMenu()}>
+              <Camera size={17} />
+              Snaps · Coming later
             </Link>
-            <button onClick={theme}>
+            <button
+              onClick={() => {
+                theme();
+                closeMenu(true);
+              }}
+            >
               <Settings size={17} />
               Settings: {dark ? "dark" : "light"} theme
             </button>
@@ -123,6 +184,7 @@ export default function Shell({ children }: { children: React.ReactNode }) {
           </div>
         )}
       </header>
+      <OfflineStatus />
       <main id="main-content" tabIndex={-1}>
         {children}
       </main>
@@ -133,12 +195,14 @@ export default function Shell({ children }: { children: React.ReactNode }) {
             aria-current={path === href ? "page" : undefined}
             key={href}
             href={href}
+            onClick={() => closeMenu()}
           >
             <Icon size={21} />
             <span>{label}</span>
           </Link>
         ))}
       </nav>
+      <DeveloperAbout />
     </>
   );
 }

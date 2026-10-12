@@ -13,3 +13,5 @@ playwright-report/
 next-env.d.ts
 public/sw.js
 *.log
+src-tauri/target/
+src-tauri/gen/schemas/

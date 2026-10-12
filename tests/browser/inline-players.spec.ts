@@ -41,16 +41,14 @@ test("create a group first and enter new names without leaving the group form", 
     page.getByRole("heading", { name: "Planning only", exact: true }),
   ).toBeVisible();
   await page.getByRole("link", { name: "Play", exact: true }).click();
-  await expect(
-    page.getByRole("button", { name: "Create your first session" }),
-  ).toBeVisible();
+  await expect(page.getByRole("button", { name: "New session" })).toBeVisible();
 });
 
 test("direct play accepts new names in place and a new late arrival without any group", async ({
   page,
 }) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Create your first session" }).click();
+  await page.getByRole("button", { name: "New session" }).click();
   await page.getByLabel("Session name").fill("Just play");
   await page.getByLabel("Venue", { exact: true }).fill("Local courts");
   for (const [index, name] of [
@@ -78,9 +76,7 @@ test("direct play accepts new names in place and a new late arrival without any 
   ).toContainText("Alex Santos added");
   await expect(page.getByText("4 selected", { exact: true })).toBeVisible();
   await expect(page.getByRole("checkbox")).toHaveCount(4);
-  await page.getByLabel("Courts", { exact: true }).fill("1");
-  await page.getByLabel("Default start").fill("00:00");
-  await page.getByLabel("Default end").fill("23:59");
+  await page.getByLabel("Available Courts", { exact: true }).fill("1");
   await page
     .getByRole("button", { name: "Create session", exact: true })
     .click();
@@ -114,9 +110,7 @@ test("direct play accepts new names in place and a new late arrival without any 
       page.getByRole("button", { name: "Check in", exact: true }),
     ).toHaveCount(remaining - 1);
   }
-  await page
-    .getByRole("button", { name: "Generate round", exact: true })
-    .click();
+
   await expect(
     page
       .locator(".court-card")

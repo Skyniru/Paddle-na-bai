@@ -1,5 +1,5 @@
 import type { Player, Match } from "@/types";
-import { statistics } from "@/lib/statistics";
+import { sessionStandings } from "@/lib/standings";
 import { Avatar } from "@/components/players/PlayerCard";
 export default function LeaderboardTable({
   players,
@@ -10,15 +10,7 @@ export default function LeaderboardTable({
   matches: Match[];
   onPlayer: (p: Player) => void;
 }) {
-  const rows = players
-    .map((p) => ({ p, s: statistics(p.id, matches) }))
-    .sort(
-      (a, b) =>
-        b.s.wins - a.s.wins ||
-        b.s.rate - a.s.rate ||
-        b.s.best - a.s.best ||
-        a.p.name.localeCompare(b.p.name),
-    );
+  const rows = sessionStandings(players, matches);
   return (
     <div className="table-wrap">
       <table>

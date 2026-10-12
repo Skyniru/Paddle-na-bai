@@ -85,9 +85,7 @@ test("saved groups support searchable session selection, late arrivals and sessi
   await page.screenshot({ path: "test-results/group-player-picker.png" });
   await page.getByLabel("Search saved players").fill("Alex");
   await expect(page.getByText("4 selected", { exact: true })).toBeVisible();
-  await page.getByLabel("Courts", { exact: true }).fill("1");
-  await page.getByLabel("Default start").fill("00:00");
-  await page.getByLabel("Default end").fill("23:59");
+  await page.getByLabel("Available Courts", { exact: true }).fill("1");
   await page
     .getByRole("button", { name: "Create session", exact: true })
     .click();
@@ -108,6 +106,12 @@ test("saved groups support searchable session selection, late arrivals and sessi
   await page.getByRole("button", { name: "Add to playing list" }).click();
   await expect(roster.locator(".roster-row")).toHaveCount(5);
   await page.getByLabel("Availability for Alex Santos").selectOption("resting");
+  await expect(
+    page.getByText("Playing list saved on device.", { exact: true }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Availability for Alex Santos")).toHaveValue(
+    "resting",
+  );
   await page.reload();
   await expect(page.getByLabel("Availability for Alex Santos")).toHaveValue(
     "resting",
@@ -129,11 +133,10 @@ test("saved groups support searchable session selection, late arrivals and sessi
       page.getByRole("button", { name: "Check in", exact: true }),
     ).toHaveCount(remaining - 1);
   }
-  await page
-    .getByRole("button", { name: "Generate round", exact: true })
-    .click();
+
   await expect(page.locator(".court-card")).not.toContainText("Alex Santos");
-  await expect(page.getByLabel("Availability for Eli Tan")).toBeDisabled();
+  await expect(page.getByLabel("Availability for Eli Tan")).toBeEnabled();
+  await page.getByLabel("Availability for Eli Tan").selectOption("resting");
   await page.getByRole("button", { name: "Team A wins", exact: true }).click();
   await expect(page.getByLabel("Availability for Eli Tan")).toBeEnabled();
   await page.getByLabel("Availability for Alex Santos").selectOption("active");
@@ -151,9 +154,7 @@ test("saved groups support searchable session selection, late arrivals and sessi
       page.getByRole("button", { name: "Check in", exact: true }),
     ).toHaveCount(remaining - 1);
   }
-  await page
-    .getByRole("button", { name: "Generate round", exact: true })
-    .click();
+
   await expect(page.locator(".court-card")).toContainText("Alex Santos");
   await page.getByRole("button", { name: "End session", exact: true }).click();
   await page
@@ -161,7 +162,8 @@ test("saved groups support searchable session selection, late arrivals and sessi
     .getByRole("button", { name: "End session", exact: true })
     .click();
   await expect(page.getByRole("dialog")).toHaveCount(0);
-  await page.getByRole("button", { name: "Create your first session" }).click();
+  await page.getByRole("link", { name: "Play", exact: true }).last().click();
+  await page.getByRole("button", { name: "New session" }).click();
   await page
     .getByRole("button", { name: "Friday Club 5 players", exact: true })
     .click();

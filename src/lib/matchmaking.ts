@@ -17,10 +17,13 @@ export function generateTeams(
   const pool = players
     .filter((p) => p.status === "active" && !busy.has(p.id))
     .map((p) => ({ p, tie: Math.random() }));
+  const eligibilityCache = new Map<string, Match[]>();
   const eligibleHistory = (id: string) => {
+    const cached = eligibilityCache.get(id);
+    if (cached) return cached;
     const events = session?.attendance?.[id];
     if (!events) return matches;
-    return matches.filter(
+    const eligible = matches.filter(
       (m) =>
         (m.eligiblePlayerIds === undefined ||
           m.eligiblePlayerIds.includes(id)) &&
@@ -28,6 +31,8 @@ export function generateTeams(
           "check-out" &&
         events.some((e) => e.at <= m.createdAt),
     );
+    eligibilityCache.set(id, eligible);
+    return eligible;
   };
   const rests = (id: string) =>
     session
@@ -92,15 +97,33 @@ export function generateTeams(
     }
     return total;
   };
+  const priorities = new Map(
+    (mode === "random" ? [] : pool).map(({ p }) => [
+      p.id,
+      {
+        games: opportunities(p.id, eligibleHistory(p.id)),
+        consecutive: consecutiveRests(p.id),
+        rests: rests(p.id),
+        resting: restingTime(p.id),
+        last: lastPlayed(p.id, matches),
+      },
+    ]),
+  );
+  const rates = new Map(
+    players.map((p) => [
+      p.id,
+      mode === "balanced" ? statistics(p.id, matches).rate : 0,
+    ]),
+  );
   pool.sort((a, b) =>
     mode === "random"
       ? a.tie - b.tie
-      : opportunities(a.p.id, eligibleHistory(a.p.id)) -
-          opportunities(b.p.id, eligibleHistory(b.p.id)) ||
-        consecutiveRests(b.p.id) - consecutiveRests(a.p.id) ||
-        rests(b.p.id) - rests(a.p.id) ||
-        restingTime(b.p.id) - restingTime(a.p.id) ||
-        lastPlayed(a.p.id, matches) - lastPlayed(b.p.id, matches) ||
+      : priorities.get(a.p.id)!.games - priorities.get(b.p.id)!.games ||
+        priorities.get(b.p.id)!.consecutive -
+          priorities.get(a.p.id)!.consecutive ||
+        priorities.get(b.p.id)!.rests - priorities.get(a.p.id)!.rests ||
+        priorities.get(b.p.id)!.resting - priorities.get(a.p.id)!.resting ||
+        priorities.get(a.p.id)!.last - priorities.get(b.p.id)!.last ||
         a.tie - b.tie,
   );
   const selected = pool.slice(0, count * 4).map((x) => x.p);
@@ -164,8 +187,8 @@ export function generateTeams(
       if (mode === "balanced")
         c +=
           Math.abs(
-            a.reduce((s, id) => s + statistics(id, matches).rate, 0) -
-              b.reduce((s, id) => s + statistics(id, matches).rate, 0),
+            a.reduce((s, id) => s + (rates.get(id) ?? 0), 0) -
+              b.reduce((s, id) => s + (rates.get(id) ?? 0), 0),
           ) / 10;
       return c;
     };

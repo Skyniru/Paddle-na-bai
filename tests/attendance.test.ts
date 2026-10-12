@@ -70,29 +70,27 @@ test("attendance, active checkout validation, undo, reentry, completion and pers
   assert.equal((await db.matches.get(m.id))!.winner, "A");
   await assert.rejects(() => changeAttendance(id, "p0", "check-out"));
 });
-test("different windows, expiry, extension and manual assignment validation", async () => {
+test("legacy reservation windows do not restrict open play; assignment remains exclusive", async () => {
   const id = await setup();
   for (let i = 0; i < 4; i++) await changeAttendance(id, "p" + i, "check-in");
   const cs = await db.courts.toCollection().sortBy("number");
-  assert.equal(courtAvailable(cs[1]), false);
+  assert.equal(courtAvailable(cs[1]), true);
+  await db.courts.update(cs[0].id, { reservationEnd: Date.now() - 1 });
+  assert.equal(courtStatus((await db.courts.get(cs[0].id))!), "Available");
+  await assignMatch(id, cs[0].id, ["p0", "p1", "p2", "p3"]);
   await assert.rejects(() =>
     assignMatch(id, cs[1].id, ["p0", "p1", "p2", "p3"]),
   );
-  await db.courts.update(cs[0].id, { reservationEnd: Date.now() - 1 });
-  assert.equal(
-    courtStatus((await db.courts.get(cs[0].id))!),
-    "Reservation Expired",
-  );
-  await assert.rejects(() => generateRound(id, "fair"));
-  await extendReservation(cs[0].id, Date.now() + 3600000);
-  await assignMatch(id, cs[0].id, ["p0", "p1", "p2", "p3"]);
-  await db.courts.update(cs[0].id, { reservationEnd: Date.now() - 1 });
   assert.equal((await db.matches.toArray())[0].status, "playing");
+  await extendReservation(cs[0].id, Date.now() + 3600000);
   assert.equal((await db.courts.get(cs[0].id))!.reservationHistory!.length, 2);
   assert.throws(() => validateReservation(2, 1));
 });
+
 test("late arrivals receive a turn without prearrival rest credit", async () => {
   const id = await setup(8);
+  const courts = await db.courts.where("sessionId").equals(id).sortBy("number");
+  await db.courts.delete(courts[1].id);
   for (let i = 0; i < 4; i++) await changeAttendance(id, "p" + i, "check-in");
   await generateRound(id, "fair");
   await finishMatch((await db.matches.toArray())[0].id, "A");

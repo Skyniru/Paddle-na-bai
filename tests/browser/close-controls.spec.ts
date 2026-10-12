@@ -9,9 +9,7 @@ test("close stays visible while session forms and group editors scroll", async (
   ]) {
     await page.setViewportSize(viewport);
     await page.goto("/");
-    await page
-      .getByRole("button", { name: "Create your first session" })
-      .click();
+    await page.getByRole("button", { name: "New session" }).click();
     const close = page.getByRole("button", {
       name: "Close dialog",
       exact: true,

@@ -1,0 +1,17 @@
+[package]
+name = "paddle-na-bai"
+version = "1.0.0"
+description = "paddlebai offline padel sessions"
+edition = "2021"
+
+[lib]
+name = "paddle_na_bai_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"

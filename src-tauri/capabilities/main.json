@@ -1,0 +1,11 @@
+{
+  "identifier": "main-capability",
+  "description": "Backup and PNG results export may write only files selected through the save dialog.",
+  "windows": ["main"],
+  "permissions": [
+    "core:default",
+    "dialog:allow-save",
+    "fs:allow-write-text-file",
+    "fs:allow-write-file"
+  ]
+}

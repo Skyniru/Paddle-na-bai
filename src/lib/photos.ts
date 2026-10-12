@@ -14,7 +14,16 @@ export async function readGroupPhoto(file: File): Promise<string> {
   });
   await new Promise<void>((resolve, reject) => {
     const image = new Image();
-    image.onload = () => resolve();
+    image.onload = () => {
+      if (
+        !image.naturalWidth ||
+        !image.naturalHeight ||
+        image.naturalWidth > 8192 ||
+        image.naturalHeight > 8192
+      )
+        reject(Error("Choose an image with dimensions up to 8192 pixels."));
+      else resolve();
+    };
     image.onerror = () =>
       reject(Error("This image could not be opened. Choose another photo."));
     image.src = source;

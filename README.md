@@ -1,4 +1,4 @@
-﻿# Paddle Na Bai!
+﻿# PaddleBai
 
 A mobile-first padel open-play app built directly in `Paddle_Na_Bai`. Next.js App Router, TypeScript, Tailwind CSS, Lucide icons, and Dexie/IndexedDB. No account, paid service, or cloud configuration is needed.
 
@@ -35,10 +35,10 @@ The service worker is enabled only in production on secure origins (including de
 
 ```sh
 npm run build
-npm run start -- --hostname 0.0.0.0
+npm run start
 ```
 
-Open http://localhost:3000 online, wait for the service worker to install, then reload. In browser devtools select offline and reload again. Check navigation, saving players, generating matches, and recording results while offline.
+Open http://localhost:3000 online and wait for **Ready for offline play**. In browser devtools select offline and reload again. Check navigation, saving players, generating matches, and recording results while offline.
 
 For an iPhone, use a locally trusted certificate:
 
@@ -52,13 +52,13 @@ For an iPhone, use a locally trusted certificate:
    ```
 
 3. Transfer **only `rootCA.pem`** from the reported CA directory to your iPhone using a trusted method. Install its profile in Settings, then enable full trust under **Settings → General → About → Certificate Trust Settings**. Never transfer `rootCA-key.pem` or commit certificate keys. Remove the test CA from the phone when testing is done. See [mkcert mobile-device guidance](https://github.com/FiloSottile/mkcert#mobile-devices).
-4. Leave the production server running on port 3000. In another terminal run:
+4. After building the static app, run:
 
    ```sh
    npm run https
    ```
 
-   This project's small HTTPS proxy listens on port 3443 using the generated certificate. It is for local production-mode testing.
+   This project's HTTPS static server serves `out/` directly on port 3443 using the generated certificate. A port-3000 server is not needed.
 
 5. Open **https://192.168.1.21:3443** in Safari with no certificate warning. Allow the private-network firewall port if required. Open every screen online once, reload, then use Safari's Share → Add to Home Screen. Disable phone Wi-Fi and cellular data, reopen the installed app, and verify offline reloads and local results. Re-enable Wi-Fi to reconnect. A certificate-warning bypass is not a substitute for trusting the CA.
 
@@ -72,13 +72,13 @@ The [Next.js PWA guide](https://nextjs.org/docs/app/guides/progressive-web-apps)
 - Record a winner and optional scores. Both scores must be present together, whole and nonnegative, and agree with the winner. A finalized match cannot be submitted again.
 - View session/all-time games, wins, losses, win rate, current streak, best streak, and ranking. Tap a player for details.
 - End a session and review history. Unfinished matches are cancelled, excluded from statistics, and preserved in records.
-- Toggle a persistent light/dark theme. Export a JSON backup of all local records from the footer. Backup import is not yet implemented.
+- Toggle a persistent light/dark theme. Export a JSON backup of all local records from the footer. Preview a JSON backup, then confirm replacement to restore it atomically. A pre-restore copy is retained; finish live play before replacement.
 
 Snaps is an explicitly labeled future-feature screen. Cloud sync, public viewing links, Messenger sharing, real-time cloud updates, photo recaps, and QR session sharing are not implemented.
 
 ## Rotation rules
 
-Fair and balanced selection sort players by number of assignments, then longest time since last assignment, with random ties. This prioritizes waiting players and prevents repeated rests when enough court slots are available. Player win rates never affect selection opportunities. Among the selected players, court allocation favors fewer previous assignments to that court. The three possible doubles pairings are scored for repeated partners and opponents; balanced mode adds a win-rate difference penalty. Zero-game players have a 0% observed win rate; this is not a skill rating. These are transparent greedy heuristics rather than an exhaustive optimization over every possible group of players.
+Fair and balanced selection sort players by eligible assignments, consecutive eligible rests, total rests, waiting duration and last-played time, with random ties. This prioritizes waiting players and prevents repeated rests when enough court slots are available. Player win rates never affect selection opportunities. Among the selected players, court allocation favors fewer previous assignments to that court. The three possible doubles pairings are scored for repeated partners and opponents; balanced mode adds a win-rate difference penalty. Zero-game players have a 0% observed win rate; this is not a skill rating. These are transparent greedy heuristics rather than an exhaustive optimization over every possible group of players.
 
 ## Architecture and storage
 
@@ -87,7 +87,7 @@ Fair and balanced selection sort players by number of assignments, then longest 
 - `src/lib/matchmaking.ts`, `rotation.ts`, `statistics.ts`: pure matching and statistics logic, independent of the UI.
 - `src/components`: reusable layout, session, court, player, and leaderboard components. `App.tsx` composes the current views and forms.
 - `src/hooks/useSessionTimer.ts`: wall-clock elapsed time from persisted timestamps, not timer ticks.
-- `scripts/sw-template.js`: network-first HTML and cache-first immutable same-origin assets. `postbuild` generates `public/sw.js` with a build-specific cache and precaches every production JS/CSS asset and route. Worker updates wait for existing tabs to close, preserving their cache until activation. Increment the template cache strategy when changing its behavior. No remote API responses are cached.
+- `scripts/sw-template.js`: consistent-build cache-first static routes and assets. `postbuild` generates both `public/sw.js` and `out/sw.js`, precaching every exported file including navigation payloads. Updates wait until all app windows close. No forced reload interrupts play.
 
 A future sync adapter can exchange versioned records at the database boundary. No remote credentials or fake sync state are present. Production sync will require conflict policy, authentication, deletion tombstones, and authorization for public read-only sessions.
 
@@ -137,5 +137,16 @@ Choose **Fair rotation** and select **Generate round** after recording results. 
 
 You can also enter **New player name → Add name** directly inside group creation, session setup, or the late-arrival picker. Each name is saved and selected without leaving the form. Pressing Enter in the name field also adds the player. An existing name is reused rather than duplicated. Groups can be saved empty for planning and updated later; sessions still require at least four players. Creating a group does not start a session, and starting a session does not require a group.
 
-
 Attendance and court reservations: New sessions require host check-in before matchmaking. Check-out is blocked during active matches, supports re-entry and undo, and retains timestamped history. Courts use Manila reservation windows (including overnight bookings), warn in the last 15 minutes, and can be extended by 30 minutes. Expiry blocks new assignments without stopping live matches. Session time remains independent. Existing sessions retain legacy availability until closed. Dexie schema v4 preserves nested attendance events and reservation history; stable record IDs, epoch timestamps and updatedAt fields are included in JSON backups for future Supabase synchronization. No remote synchronization is enabled.
+
+## Improved offline app
+
+Production is a static export in `out/`. `npm run start` serves that directory on port 3000 without a Next.js server; use `node scripts/serve.cjs 3001` for another port. Browser tests use their own production server on port 3100. Initial installation needs an online HTTPS visit (desktop localhost also works); wait for **Ready for offline play**, choose **Install app** or your browser installation option, and reopen once. On Safari use Share ? Add to Home Screen. Test again with networking off. The app can then start and navigate without its server. Do not open the build with `file://`.
+
+Keep your existing origin to preserve browser data. Export a backup before changing host, protocol, port, browser profile, or platform. Restore accepts this versioned format and legacy schema-v4 exports, previews counts and photos, and keeps a downloadable pre-restore snapshot. Device data controls appear on every screen. New uploads validate image decoding and dimensions; photos stay local and are included in backups. Offline files and saved records are separate: ?Ready for offline play? describes the application cache, while roster saves show a commit confirmation.
+
+See [AUDIT.md](AUDIT.md) for findings, changes and limits; [NATIVE-PACKAGING.md](NATIVE-PACKAGING.md) evaluates Windows/Tauri and Android/iOS/Capacitor. Tauri 2 Windows packaging is configured, but its build is blocked by missing Rust/Cargo and MSVC; no installer or native device test has been completed. The exact branding is **PaddleBai**, with web/install icons derived from the preserved `public/icons/PaddleBai-Logo.png`. Local Geist font licensing is bundled in `public/fonts/OFL.txt`.
+
+## Windows and phone installation
+
+See [INSTALL-AND-TEST.md](INSTALL-AND-TEST.md) for exact commands, prerequisites, configured installer output locations, native data transfer, and trusted HTTPS installation on iPhone/Android. Use `npm run desktop:dev` for the Tauri development window and `npm run desktop:build` for the NSIS installer after installing Rust/MSVC. Run `npm run phone:setup` to print the current local IP and certificate commands.

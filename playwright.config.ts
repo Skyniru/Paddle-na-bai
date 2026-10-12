@@ -3,14 +3,14 @@ export default defineConfig({
   testDir: "./tests/browser",
   workers: 1,
   use: {
-    baseURL: "http://localhost:3000",
+    baseURL: "http://localhost:3100",
     ...devices["iPhone 13"],
     defaultBrowserType: "chromium",
   },
   webServer: {
-    command: "npm run start",
-    url: "http://localhost:3000",
-    reuseExistingServer: true,
+    command: "node scripts/serve.cjs 3100",
+    url: "http://localhost:3100",
+    reuseExistingServer: false,
   },
   reporter: "list",
 });

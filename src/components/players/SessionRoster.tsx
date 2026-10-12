@@ -9,8 +9,9 @@ import type {
 } from "@/types";
 import { changeAttendance, updateSessionPlayers } from "@/lib/db";
 import { opportunities, lastPlayed } from "@/lib/rotation";
-import { isCheckedIn, venueTime } from "@/lib/reservations";
+import { isCheckedIn, venueTime, sessionPlayerState } from "@/lib/reservations";
 import PlayerPicker from "./PlayerPicker";
+import { storageError } from "@/lib/storage";
 
 export default function SessionRoster({
   session,
@@ -30,19 +31,20 @@ export default function SessionRoster({
   const [selected, setSelected] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [saved, setSaved] = useState(false);
   async function update(
     ids: string[],
     statuses: Record<string, PlayerStatus> = {},
   ) {
     setError("");
+    setSaved(false);
     setBusy(true);
     try {
       await updateSessionPlayers(session.id, ids, statuses);
+      setSaved(true);
       return true;
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "Could not update the playing list.",
-      );
+      setError(storageError(e));
       return false;
     } finally {
       setBusy(false);
@@ -54,12 +56,12 @@ export default function SessionRoster({
   ) {
     setBusy(true);
     setError("");
+    setSaved(false);
     try {
       await changeAttendance(session.id, id, action);
+      setSaved(true);
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "Attendance could not be saved.",
-      );
+      setError(storageError(e));
     } finally {
       setBusy(false);
     }
@@ -107,6 +109,13 @@ export default function SessionRoster({
           {error}
         </p>
       )}
+      <p role="status">
+        {busy
+          ? "Saving playing list…"
+          : saved
+            ? "Playing list saved on device."
+            : ""}
+      </p>
       {adding && (
         <div className="group-editor">
           <PlayerPicker
@@ -140,24 +149,12 @@ export default function SessionRoster({
               <strong>{p.name}</strong>
               <small>
                 {opportunities(p.id, matches)} games assigned ·{" "}
-                {busyIds.has(p.id)
-                  ? "On court"
-                  : (session.playerStatuses?.[p.id] ?? p.status) === "active"
-                    ? "Waiting for a turn"
-                    : (session.playerStatuses?.[p.id] ?? p.status)}
+                {sessionPlayerState(session, p, matches)}
               </small>
             </span>
             <div>
               <span className="pill">
-                {busyIds.has(p.id)
-                  ? "Playing"
-                  : !isCheckedIn(session, p.id)
-                    ? session.attendance?.[p.id]?.length
-                      ? "Checked Out"
-                      : "Not Checked In"
-                    : (session.playerStatuses?.[p.id] ?? p.status) === "resting"
-                      ? "Resting"
-                      : "Checked In"}
+                {sessionPlayerState(session, p, matches)}
               </span>
               <button
                 className="secondary"
@@ -169,7 +166,11 @@ export default function SessionRoster({
                   )
                 }
               >
-                {isCheckedIn(session, p.id) ? "Check out" : "Check in"}
+                {isCheckedIn(session, p.id)
+                  ? "Check out"
+                  : session.continuous
+                    ? "Return to play"
+                    : "Check in"}
               </button>
               {session.attendance?.[p.id]?.at(-1)?.action === "check-out" && (
                 <button
@@ -184,7 +185,12 @@ export default function SessionRoster({
                 <summary>Attendance history</summary>
                 {session.attendance?.[p.id]?.map((e, i) => (
                   <small key={i}>
-                    {e.action} ? {venueTime(e.at)}
+                    {e.action === "check-in"
+                      ? "Checked in"
+                      : e.action === "check-out"
+                        ? "Checked out"
+                        : "Check-out undone"}{" "}
+                    · {venueTime(e.at)}
                   </small>
                 ))}
               </details>
@@ -193,7 +199,7 @@ export default function SessionRoster({
               <span className="sr-only">Availability for {p.name}</span>
               <select
                 aria-label={`Availability for ${p.name}`}
-                disabled={busy || busyIds.has(p.id)}
+                disabled={busy || (!session.continuous && busyIds.has(p.id))}
                 value={session.playerStatuses?.[p.id] ?? p.status}
                 onChange={(e) =>
                   update(session.playerIds, {
@@ -205,6 +211,9 @@ export default function SessionRoster({
                 <option value="resting">Taking a rest</option>
                 <option value="unavailable">Finished for today</option>
               </select>
+              {session.continuous && busyIds.has(p.id) && (
+                <small className="muted">Applies after this match.</small>
+              )}
             </label>
           </div>
         ))}

@@ -1,7 +1,9 @@
 "use client";
+import { matchElapsed } from "@/lib/match-time";
 import { useEffect, useState } from "react";
 import { useLiveQuery } from "dexie-react-hooks";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   Plus,
   ArrowUpRight,
@@ -12,7 +14,6 @@ import {
   Check,
   X,
   History,
-  Download,
 } from "lucide-react";
 import {
   db,
@@ -21,23 +22,37 @@ import {
   startSession,
   endSession,
   generateRound,
+  syncContinuousQueue,
+  resumeContinuousSession,
   finishMatch,
   removePlayer,
 } from "@/lib/db";
 import { statistics } from "@/lib/statistics";
 import type { Player, Mode } from "@/types";
 import ReservationSetup from "./courts/ReservationSetup";
-import { isCheckedIn, courtAvailable } from "@/lib/reservations";
+import {
+  isCheckedIn,
+  freeCourts,
+  sessionPlayerState,
+  venueTime,
+} from "@/lib/reservations";
 import GroupManager from "./players/GroupManager";
 import SessionRoster from "./players/SessionRoster";
 import { SessionPlayerPicker } from "./players/PlayerPicker";
 import SessionCard from "./dashboard/SessionCard";
 import StatsOverview from "./dashboard/StatsOverview";
+import ResultEditor from "./courts/ResultEditor";
 import CourtCard from "./courts/CourtCard";
+import SessionQueue from "./courts/SessionQueue";
+import ResultsRecap from "./results/ResultsRecap";
 import PlayerCard, { Avatar } from "./players/PlayerCard";
 import LeaderboardTable from "./leaderboard/LeaderboardTable";
+import DeviceData from "./DeviceData";
+import { storageError } from "@/lib/storage";
+import { readGroupPhoto } from "@/lib/photos";
 type View = "play" | "courts" | "players" | "leaderboard" | "snaps" | "history";
 export default function App({ view }: { view: View }) {
+  const router = useRouter();
   const [now, refreshClock] = useState(() => Date.now());
   useEffect(() => {
     const timer = setInterval(() => refreshClock(Date.now()), 10000);
@@ -46,13 +61,17 @@ export default function App({ view }: { view: View }) {
   const [loadError, setLoadError] = useState("");
   const data = useLiveQuery(async () => {
     try {
-      return {
-        players: await db.players.toArray(),
-        groups: await db.groups.toArray(),
-        sessions: await db.sessions.orderBy("createdAt").reverse().toArray(),
-        courts: await db.courts.toArray(),
-        matches: await db.matches.toArray(),
-      };
+      return await db.transaction(
+        "r",
+        [db.players, db.groups, db.sessions, db.courts, db.matches],
+        async () => ({
+          players: await db.players.toArray(),
+          groups: await db.groups.toArray(),
+          sessions: await db.sessions.orderBy("createdAt").reverse().toArray(),
+          courts: await db.courts.toArray(),
+          matches: await db.matches.toArray(),
+        }),
+      );
     } catch (e) {
       setLoadError(
         e instanceof Error ? e.message : "Could not read device storage.",
@@ -63,11 +82,30 @@ export default function App({ view }: { view: View }) {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [busy, setBusy] = useState(false);
+  const recoveryId = data?.sessions.find(
+    (s) => s.continuous !== false && s.status === "active",
+  )?.id;
+  useEffect(() => {
+    if (!recoveryId) return;
+    resumeContinuousSession(recoveryId).catch((error) =>
+      setLoadError(storageError(error)),
+    );
+  }, [recoveryId]);
   const [modal, setModal] = useState<"player" | "session" | "end" | null>(null);
   const [edit, setEdit] = useState<Player | null>(null);
   const [detail, setDetail] = useState<Player | null>(null);
+  const [removeId, setRemoveId] = useState<string | null>(null);
   const [historyId, setHistoryId] = useState("");
+  useEffect(() => {
+    if (view !== "history") return;
+    const id = new URLSearchParams(window.location.search).get("session");
+    if (!id) return;
+    const frame = requestAnimationFrame(() => setHistoryId(id));
+    return () => cancelAnimationFrame(frame);
+  }, [view]);
   const [mode, setMode] = useState<Mode>("fair");
+  const [sessionPhoto, setSessionPhoto] = useState<string>();
+  const [readingBanner, setReadingBanner] = useState(false);
   const [editingGroup, setEditingGroup] = useState(false);
   const [search, setSearch] = useState("");
   const [addingSessionPlayer, setAddingSessionPlayer] = useState(false);
@@ -103,9 +141,7 @@ export default function App({ view }: { view: View }) {
       if (success) setNotice(success);
       return true;
     } catch (e) {
-      setError(
-        e instanceof Error ? e.message : "Something went wrong. Try again.",
-      );
+      setError(storageError(e));
       return false;
     } finally {
       setBusy(false);
@@ -156,6 +192,15 @@ export default function App({ view }: { view: View }) {
       isCheckedIn(selected, p.id) &&
       !liveIds.has(p.id),
   );
+  const availableCourts = freeCourts(sessionCourts, sessionMatches, now);
+  const generationReason =
+    current?.status !== "active"
+      ? "Start the session first."
+      : availableCourts.length === 0
+        ? "No court is free right now. Finish a match to free a court."
+        : waiting.length < 4
+          ? "Check in at least four ready players who are not already playing."
+          : "";
   function addPlayer() {
     setEdit(null);
     setModal("player");
@@ -171,19 +216,7 @@ export default function App({ view }: { view: View }) {
       if (!name) throw Error("Enter the player’s name.");
       if (name.length > 60) throw Error("Keep the name under 60 characters.");
       let photo = edit?.photo;
-      if (file?.size) {
-        if (
-          file.size > 2 * 1024 * 1024 ||
-          !["image/jpeg", "image/png", "image/webp"].includes(file.type)
-        )
-          throw Error("Choose a JPG, PNG, or WebP photo under 2 MB.");
-        photo = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = () => resolve(String(reader.result));
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
-        });
-      }
+      if (file?.size) photo = await readGroupPhoto(file);
       await db.players.put({
         ...(edit ?? base()),
         name,
@@ -202,23 +235,17 @@ export default function App({ view }: { view: View }) {
         name: String(f.get("name") ?? ""),
         venue: String(f.get("venue") ?? ""),
         courtCount: Number(f.get("courts")),
+        continuous: true,
+        mode,
+        bannerPhoto: sessionPhoto,
         playerIds: f.getAll("players").map(String),
-        duration: f.get("duration") ? Number(f.get("duration")) : undefined,
-        reservations: Array.from(
-          { length: Number(f.get("courts")) },
-          (_, i) => {
-            const date = String(f.get("reservationDate"));
-            const start = Date.parse(
-              date + "T" + f.get("courtStart" + i) + ":00+08:00",
-            );
-            let end = Date.parse(
-              date + "T" + f.get("courtEnd" + i) + ":00+08:00",
-            );
-            if (end < start) end += 86400000;
-            return { number: Number(f.get("courtNumber" + i)), start, end };
-          },
-        ),
       });
+      try {
+        localStorage.setItem("paddle-court-count", String(f.get("courts")));
+      } catch {
+        /* Session is already saved. */
+      }
+      setSessionPhoto(undefined);
       setModal(null);
     }, "Session created. Start when your crew is ready.");
   }
@@ -231,19 +258,32 @@ export default function App({ view }: { view: View }) {
   function renderCourts() {
     return (
       <div className="court-grid">
-        {sessionCourts.map((c) => (
-          <CourtCard
-            key={c.id}
-            court={c}
-            players={players}
-            match={
-              [...sessionMatches]
-                .filter((m) => m.courtId === c.id && m.status !== "cancelled")
-                .sort((a, b) => b.createdAt - a.createdAt)[0]
-            }
-            onResult={result}
-          />
-        ))}
+        {sessionCourts.map((c) => {
+          const latest = sessionMatches
+            .filter((m) => m.courtId === c.id && m.status !== "cancelled")
+            .sort(
+              (a, b) =>
+                Number(b.status === "playing") -
+                  Number(a.status === "playing") ||
+                b.createdAt - a.createdAt ||
+                b.updatedAt - a.updatedAt,
+            )[0];
+          return (
+            <CourtCard
+              key={c.id + ":" + (latest?.id ?? "empty")}
+              court={c}
+              players={players}
+              eligiblePlayers={waiting}
+              canAssign={
+                !current?.continuous &&
+                current?.status === "active" &&
+                availableCourts.some((court) => court.id === c.id)
+              }
+              match={latest}
+              onResult={result}
+            />
+          );
+        })}
       </div>
     );
   }
@@ -307,10 +347,16 @@ export default function App({ view }: { view: View }) {
               month: "short",
               day: "numeric",
               year: "numeric",
+              timeZone: "Asia/Manila",
             }).format(new Date())}
           </span>
         )}
       </div>
+      {current?.status === "active" && view === "play" && (
+        <p className="recovery-note" role="status">
+          Your session is saved on this device and resumes when you reopen.
+        </p>
+      )}
       {error && (
         <div role="alert" className="alert error">
           {error}
@@ -337,24 +383,10 @@ export default function App({ view }: { view: View }) {
                 onStart={() =>
                   action(
                     () => startSession(current.id),
-                    "Session started. Generate your first round.",
+                    "Session started. Matches are ready.",
                   )
                 }
                 onEnd={() => setModal("end")}
-              />
-              <StatsOverview
-                players={sessionPlayers.length}
-                courts={
-                  sessionCourts.filter((c) =>
-                    sessionMatches.some(
-                      (m) => m.courtId === c.id && m.status === "playing",
-                    ),
-                  ).length
-                }
-                games={
-                  sessionMatches.filter((m) => m.status === "completed").length
-                }
-                waiting={waiting.length}
               />
               <div className="section-heading">
                 <div>
@@ -370,75 +402,54 @@ export default function App({ view }: { view: View }) {
                   </label>
                   <select
                     id="mode"
-                    value={mode}
-                    onChange={(e) => setMode(e.target.value as Mode)}
+                    value={current.mode ?? mode}
+                    onChange={(e) => {
+                      const value = e.target.value as Mode;
+                      setMode(value);
+                      if (current.continuous)
+                        action(
+                          () => syncContinuousQueue(current.id, value),
+                          "Rotation preference saved.",
+                        );
+                    }}
                   >
                     <option value="fair">Fair rotation</option>
                     <option value="random">Pure random</option>
                     <option value="balanced">Balanced teams</option>
                   </select>
-                  <button
-                    className="primary"
-                    disabled={busy || current.status !== "active"}
-                    onClick={() =>
-                      action(
-                        () => generateRound(current.id, mode),
-                        "New matches are ready. Let’s play!",
-                      )
-                    }
-                  >
-                    <Shuffle size={16} />
-                    Generate round
-                  </button>
+                  {!current.continuous && (
+                    <button
+                      className="primary"
+                      disabled={busy || !!generationReason}
+                      aria-describedby="round-reason"
+                      onClick={() =>
+                        action(
+                          () => generateRound(current.id, mode),
+                          "New matches are ready. Let’s play!",
+                        )
+                      }
+                    >
+                      <Shuffle size={16} />
+                      Resume rotation
+                    </button>
+                  )}
                 </div>
               </div>
-              {sessionCourts.length > 0 &&
-                sessionCourts.every(
-                  (c) =>
-                    c.reservationEnd !== undefined && c.reservationEnd <= now,
-                ) && (
-                  <div className="alert">
-                    All court reservations have ended. Extend a court or end the
-                    session.
-                  </div>
-                )}
-              <div className="stats-grid">
+              {!current.continuous && (
+                <p id="round-reason" className="muted" role="status">
+                  {generationReason}
+                </p>
+              )}
+              <div className="stats-grid session-primary-stats">
                 {[
                   [
                     sessionPlayers.filter((p) => isCheckedIn(current, p.id))
                       .length,
-                    "Checked-In Players",
+                    "Players Present",
                   ],
-                  [liveIds.size, "Active Players"],
-                  [
-                    sessionPlayers.filter(
-                      (p) => isCheckedIn(current, p.id) && !liveIds.has(p.id),
-                    ).length,
-                    "Resting Players",
-                  ],
-                  [
-                    sessionPlayers.filter(
-                      (p) =>
-                        current.attendance?.[p.id]?.at(-1)?.action ===
-                        "check-out",
-                    ).length,
-                    "Checked-Out Players",
-                  ],
-                  [
-                    sessionCourts.filter((c) => courtAvailable(c, now)).length,
-                    "Reserved Courts",
-                  ],
-                  [
-                    Math.ceil(
-                      sessionCourts.reduce(
-                        (sum, c) =>
-                          sum + Math.max(0, (c.reservationEnd ?? now) - now),
-                        0,
-                      ) / 60000,
-                    ) + " min",
-                    "Remaining Court Time",
-                  ],
-                  [current.round ?? 0, "Current Round"],
+                  [liveIds.size, "Playing"],
+                  [waiting.length, "Waiting"],
+                  [availableCourts.length, "Currently Available Courts"],
                 ].map(([value, label]) => (
                   <div className="stat" key={label}>
                     <strong>{value}</strong>
@@ -446,7 +457,87 @@ export default function App({ view }: { view: View }) {
                   </div>
                 ))}
               </div>
+              <details className="session-details">
+                <summary>More session details</summary>
+                <div className="session-secondary-stats">
+                  <p>
+                    Current round: <strong>{current.round ?? 0}</strong>
+                  </p>
+                  <p>
+                    Finished matches:{" "}
+                    <strong>
+                      {
+                        sessionMatches.filter((m) => m.status === "completed")
+                          .length
+                      }
+                    </strong>
+                  </p>
+                  <p>
+                    Resting:{" "}
+                    <strong>
+                      {
+                        sessionPlayers.filter(
+                          (p) =>
+                            sessionPlayerState(current, p, sessionMatches) ===
+                            "Resting",
+                        ).length
+                      }
+                    </strong>
+                  </p>
+                  <p>
+                    Unavailable:{" "}
+                    <strong>
+                      {
+                        sessionPlayers.filter(
+                          (p) =>
+                            sessionPlayerState(current, p, sessionMatches) ===
+                            "Unavailable",
+                        ).length
+                      }
+                    </strong>
+                  </p>
+                  <p>
+                    Checked out:{" "}
+                    <strong>
+                      {
+                        sessionPlayers.filter(
+                          (p) =>
+                            sessionPlayerState(current, p, sessionMatches) ===
+                            "Checked Out",
+                        ).length
+                      }
+                    </strong>
+                  </p>
+                  <p>
+                    Session courts: <strong>{sessionCourts.length}</strong>
+                  </p>
+                </div>
+              </details>
               {renderCourts()}
+              {sessionMatches.some((match) => match.status === "completed") && (
+                <details className="session-details">
+                  <summary>Finished match results</summary>
+                  {sessionMatches
+                    .filter((match) => match.status === "completed")
+                    .sort((a, b) => (b.endedAt ?? 0) - (a.endedAt ?? 0))
+                    .map((match) => (
+                      <div key={match.id} className="session-finished-match">
+                        <p>
+                          {venueTime(match.endedAt ?? match.createdAt)} ·
+                          Winner: Team {match.winner} · Duration:{" "}
+                          {matchElapsed(match)}
+                          {match.scoreA !== undefined
+                            ? ` ${match.scoreA} – ${match.scoreB}`
+                            : ""}
+                        </p>
+                        <ResultEditor match={match} />
+                      </div>
+                    ))}
+                </details>
+              )}
+              {current.continuous && (
+                <SessionQueue session={current} players={sessionPlayers} />
+              )}
               <SessionRoster
                 key={current.id + rosterGroupId + groupRequest}
                 initialGroupId={rosterGroupId}
@@ -455,32 +546,34 @@ export default function App({ view }: { view: View }) {
                 groups={groups}
                 matches={sessionMatches}
               />
-              <section className="waiting">
-                <div className="section-heading">
-                  <div>
-                    <h2>
-                      Up next <span className="count">{waiting.length}</span>
-                    </h2>
-                    <p>Taking a breather. Ready for the next round.</p>
+              {!current.continuous && (
+                <section className="waiting">
+                  <div className="section-heading">
+                    <div>
+                      <h2>
+                        Up next <span className="count">{waiting.length}</span>
+                      </h2>
+                      <p>Checked in and ready for the next round.</p>
+                    </div>
+                    <Link href="/players">
+                      Manage players <ArrowUpRight size={15} />
+                    </Link>
                   </div>
-                  <Link href="/players">
-                    Manage players <ArrowUpRight size={15} />
-                  </Link>
-                </div>
-                <div className="waiting-players">
-                  {waiting.map((p) => (
-                    <button key={p.id} onClick={() => setDetail(p)}>
-                      <Avatar player={p} />
-                      <span>{p.name}</span>
-                    </button>
-                  ))}
-                  {!waiting.length && (
-                    <p className="muted">
-                      Everyone is on court or taking a rest.
-                    </p>
-                  )}
-                </div>
-              </section>
+                  <div className="waiting-players">
+                    {waiting.map((p) => (
+                      <button key={p.id} onClick={() => setDetail(p)}>
+                        <Avatar player={p} />
+                        <span>{p.name}</span>
+                      </button>
+                    ))}
+                    {!waiting.length && (
+                      <p className="muted">
+                        Everyone is on court or taking a rest.
+                      </p>
+                    )}
+                  </div>
+                </section>
+              )}
             </>
           ) : (
             <>
@@ -499,13 +592,9 @@ export default function App({ view }: { view: View }) {
                     <br className="desktop-only" /> games fair. All saved right
                     here on your device.
                   </p>
-                  <button
-                    className="primary"
-                    onClick={() => setModal("session")}
-                  >
-                    <Plus size={18} />
-                    Create your first session
-                  </button>
+                  <p className="welcome-note">
+                    Use New session above to choose your courts and players.
+                  </p>
                   <span className="welcome-note">
                     No account needed. Just bring your racket.
                   </span>
@@ -546,9 +635,7 @@ export default function App({ view }: { view: View }) {
                   <p>
                     Pick a venue, choose your courts, and gather your players.
                   </p>
-                  <button onClick={() => setModal("session")}>
-                    Create a session <ArrowUpRight size={16} />
-                  </button>
+                  <p>Use the New session button above.</p>
                 </div>
                 <div>
                   <span>03</span>
@@ -693,8 +780,7 @@ export default function App({ view }: { view: View }) {
                     <span>
                       <strong>{s.name}</strong>
                       <small>
-                        {s.venue} · {new Date(s.createdAt).toLocaleDateString()}{" "}
-                        ·{" "}
+                        {s.venue} · {venueTime(s.createdAt)} ·{" "}
                         {
                           matches.filter(
                             (m) =>
@@ -720,19 +806,31 @@ export default function App({ view }: { view: View }) {
               <button className="text-button" onClick={() => setHistoryId("")}>
                 ← All sessions
               </button>
-              <h2>{selected?.name}</h2>
+              {selected?.status === "completed" && (
+                <ResultsRecap
+                  key={
+                    selected.id +
+                    sessionMatches.map((m) => m.id + m.updatedAt).join(",") +
+                    sessionPlayers.map((p) => p.name).join(",")
+                  }
+                  session={selected}
+                  players={sessionPlayers}
+                  matches={sessionMatches}
+                />
+              )}
+              {selected?.status !== "completed" && <h2>{selected?.name}</h2>}
               <p className="subtitle">
-                {selected?.venue} ?{" "}
+                {selected?.venue} ·{" "}
                 {Math.round((selected?.elapsedDuration ?? 0) / 60000)} minutes
               </p>
               <details>
-                <summary>Attendance and reservation history</summary>
+                <summary>Attendance and historical court details</summary>
                 {sessionPlayers.map((p) => (
                   <div key={p.id}>
                     <strong>{p.name}</strong>
                     {selected?.attendance?.[p.id]?.map((e, i) => (
                       <p key={i}>
-                        {e.action} ?{" "}
+                        {e.action} ·{" "}
                         {new Intl.DateTimeFormat("en-PH", {
                           timeZone: "Asia/Manila",
                           dateStyle: "medium",
@@ -742,22 +840,24 @@ export default function App({ view }: { view: View }) {
                     ))}
                   </div>
                 ))}
-                {sessionCourts.map((c) => (
-                  <div key={c.id}>
-                    <strong>Court {c.number}</strong>
-                    {c.reservationHistory?.map((r, i) => (
-                      <p key={i}>
-                        {new Date(r.start).toLocaleString("en-PH", {
-                          timeZone: "Asia/Manila",
-                        })}{" "}
-                        ?{" "}
-                        {new Date(r.end).toLocaleString("en-PH", {
-                          timeZone: "Asia/Manila",
-                        })}
-                      </p>
-                    ))}
-                  </div>
-                ))}
+                {sessionCourts
+                  .filter((c) => c.reservationHistory?.length)
+                  .map((c) => (
+                    <div key={c.id}>
+                      <strong>Court {c.number}</strong>
+                      {c.reservationHistory?.map((r, i) => (
+                        <p key={i}>
+                          {new Date(r.start).toLocaleString("en-PH", {
+                            timeZone: "Asia/Manila",
+                          })}{" "}
+                          –{" "}
+                          {new Date(r.end).toLocaleString("en-PH", {
+                            timeZone: "Asia/Manila",
+                          })}
+                        </p>
+                      ))}
+                    </div>
+                  ))}
               </details>
               <LeaderboardTable
                 players={sessionPlayers}
@@ -767,6 +867,16 @@ export default function App({ view }: { view: View }) {
               <div className="section-heading">
                 <h2>Match results</h2>
               </div>
+              {sessionMatches.some((m) => m.status === "cancelled") && (
+                <p className="muted">
+                  {
+                    sessionMatches.filter((m) => m.status === "cancelled")
+                      .length
+                  }{" "}
+                  unfinished matches were cancelled when the session ended. No
+                  winners or scores were added to the standings.
+                </p>
+              )}
               {sessionMatches
                 .filter((m) => m.status === "completed")
                 .map((m) => (
@@ -782,12 +892,13 @@ export default function App({ view }: { view: View }) {
                           .join(" & ")}
                       </strong>
                       <small>
-                        Team {m.winner} won{" "}
+                        Duration: {matchElapsed(m)} · Team {m.winner} won{" "}
                         {m.scoreA !== undefined
                           ? " · " + m.scoreA + " – " + m.scoreB
                           : ""}
                       </small>
                     </span>
+                    <ResultEditor match={m} />
                   </div>
                 ))}
             </>
@@ -811,42 +922,7 @@ export default function App({ view }: { view: View }) {
           </Link>
         </section>
       )}
-      <footer className="footer">
-        <span>
-          <span className="dot" />
-          Your game stays with you. Saved on this device.
-        </span>
-        <button
-          className="text-button"
-          onClick={() =>
-            action(async () => {
-              const blob = new Blob(
-                [
-                  JSON.stringify(
-                    {
-                      ...data,
-                      exportedAt: new Date().toISOString(),
-                      schemaVersion: 4,
-                    },
-                    null,
-                    2,
-                  ),
-                ],
-                { type: "application/json" },
-              );
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement("a");
-              a.href = url;
-              a.download = "paddle-na-bai-backup.json";
-              a.click();
-              setTimeout(() => URL.revokeObjectURL(url), 1000);
-            }, "Backup downloaded.")
-          }
-        >
-          <Download size={14} />
-          Export backup
-        </button>
-      </footer>
+      <DeviceData />
       {modal && (
         <div className="modal-backdrop">
           <section
@@ -865,7 +941,7 @@ export default function App({ view }: { view: View }) {
               </button>
             </div>
             <div className="modal-body">
-              <p className="eyebrow">PADDLE NA BAI!</p>
+              <p className="eyebrow">PaddleBai</p>
               <h2 id="modal-title">
                 {modal === "player"
                   ? edit
@@ -939,29 +1015,35 @@ export default function App({ view }: { view: View }) {
                     />
                   </label>
                   <ReservationSetup />
-                  <div className="form-row">
-                    <label hidden>
-                      Legacy courts
-                      <input
-                        name="legacyCourts"
-                        type="number"
-                        min="1"
-                        max="12"
-                        required
-                        defaultValue="1"
-                      />
-                    </label>
-                    <label>
-                      Duration in minutes
-                      <input
-                        name="duration"
-                        type="number"
-                        min="1"
-                        max="1440"
-                        placeholder="Optional"
-                      />
-                    </label>
-                  </div>
+                  <label>
+                    Session banner photo (optional)
+                    <input
+                      type="file"
+                      accept="image/jpeg,image/png,image/webp"
+                      disabled={busy || readingBanner}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setReadingBanner(true);
+                        try {
+                          setSessionPhoto(await readGroupPhoto(file));
+                        } catch (error) {
+                          setError(storageError(error));
+                        } finally {
+                          setReadingBanner(false);
+                        }
+                      }}
+                    />
+                  </label>
+                  {sessionPhoto && (
+                    <button
+                      type="button"
+                      className="text-button"
+                      onClick={() => setSessionPhoto(undefined)}
+                    >
+                      Remove session photo
+                    </button>
+                  )}
                   <fieldset>
                     <legend>Choose your crew · at least 4 players</legend>
                     <SessionPlayerPicker
@@ -980,7 +1062,12 @@ export default function App({ view }: { view: View }) {
                   </fieldset>
                   <button
                     className="primary full"
-                    disabled={busy || addingSessionPlayer || players.length < 4}
+                    disabled={
+                      busy ||
+                      readingBanner ||
+                      addingSessionPlayer ||
+                      players.length < 4
+                    }
                   >
                     Create session <ArrowUpRight size={16} />
                   </button>
@@ -1003,7 +1090,12 @@ export default function App({ view }: { view: View }) {
                       disabled={busy}
                       onClick={() =>
                         action(async () => {
-                          if (current) await endSession(current.id);
+                          if (current) {
+                            await endSession(current.id);
+                            router.push(
+                              `/history/?session=${encodeURIComponent(current.id)}`,
+                            );
+                          }
                           setModal(null);
                         }, "Session completed. Find the results in History.")
                       }
@@ -1038,7 +1130,10 @@ export default function App({ view }: { view: View }) {
                   <button
                     className="close"
                     aria-label="Close player details"
-                    onClick={() => setDetail(null)}
+                    onClick={() => {
+                      setDetail(null);
+                      setRemoveId(null);
+                    }}
                   >
                     <X size={20} />
                   </button>
@@ -1076,16 +1171,45 @@ export default function App({ view }: { view: View }) {
                     <button
                       className="danger"
                       disabled={busy}
-                      onClick={() =>
-                        action(async () => {
-                          await removePlayer(fresh.id);
-                          setDetail(null);
-                        }, "Player removed.")
-                      }
+                      onClick={() => setRemoveId(fresh.id)}
                     >
                       Remove player
                     </button>
                   </div>
+                  {removeId === fresh.id && (
+                    <div
+                      className="alert"
+                      role="region"
+                      aria-label="Remove player confirmation"
+                    >
+                      <p>
+                        Remove {fresh.name} and their photo from saved players?
+                        Players with session records cannot be removed.
+                      </p>
+                      <div className="two-buttons">
+                        <button
+                          className="secondary"
+                          disabled={busy}
+                          onClick={() => setRemoveId(null)}
+                        >
+                          Keep player
+                        </button>
+                        <button
+                          className="danger"
+                          disabled={busy}
+                          onClick={() =>
+                            action(async () => {
+                              await removePlayer(fresh.id);
+                              setRemoveId(null);
+                              setDetail(null);
+                            }, "Player removed.")
+                          }
+                        >
+                          Confirm removal
+                        </button>
+                      </div>
+                    </div>
+                  )}
                   {error && (
                     <p className="form-error" role="alert">
                       {error}

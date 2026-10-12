@@ -1,4 +1,53 @@
-import type { Court, Session } from "@/types";
+import type { Court, Session, Player, Match } from "@/types";
+
+export function sessionPlayerState(
+  session: Session,
+  player: Player,
+  matches: Match[],
+) {
+  if (!isCheckedIn(session, player.id))
+    return session.attendance?.[player.id]?.length
+      ? "Checked Out"
+      : "Not Checked In";
+  if (
+    matches.some(
+      (match) =>
+        match.status === "playing" &&
+        [...match.teamA, ...match.teamB].includes(player.id),
+    )
+  )
+    return "Playing";
+  const status = session.playerStatuses?.[player.id] ?? player.status;
+  return status === "active"
+    ? "Waiting"
+    : status === "resting"
+      ? "Resting"
+      : "Unavailable";
+}
+
+export function freeCourts(
+  courts: Court[],
+  matches: Match[],
+  now = Date.now(),
+) {
+  const occupied = new Set(
+    matches
+      .filter((match) => match.status === "playing")
+      .map((match) => match.courtId),
+  );
+  return courts.filter(
+    (court) => courtAvailable(court, now) && !occupied.has(court.id),
+  );
+}
+
+const manilaDateTime = new Intl.DateTimeFormat("en-PH", {
+  timeZone: "Asia/Manila",
+  month: "short",
+  day: "numeric",
+  year: "numeric",
+  hour: "numeric",
+  minute: "2-digit",
+});
 export function isCheckedIn(s: Session, id: string) {
   const e = s.attendance?.[id];
   return (
@@ -7,18 +56,14 @@ export function isCheckedIn(s: Session, id: string) {
   );
 }
 export function courtAvailable(c: Court, now = Date.now()) {
-  return (
-    (c.reservationStart === undefined || now >= c.reservationStart) &&
-    (c.reservationEnd === undefined || now < c.reservationEnd)
-  );
+  // Historical reservation timestamps do not restrict live open play.
+  void c;
+  void now;
+  return true;
 }
 export function courtStatus(c: Court, now = Date.now(), playing = false) {
-  if (c.reservationEnd !== undefined && now >= c.reservationEnd)
-    return "Reservation Expired";
-  if (c.reservationStart !== undefined && now < c.reservationStart)
-    return "Not Started";
-  if (c.reservationEnd !== undefined && c.reservationEnd - now <= 900000)
-    return "Reservation Ending Soon";
+  void c;
+  void now;
   return playing ? "Playing" : "Available";
 }
 export function validateReservation(start: number, end: number) {
@@ -26,11 +71,5 @@ export function validateReservation(start: number, end: number) {
     throw Error("Reservation end must follow its start.");
 }
 export function venueTime(at: number) {
-  return new Intl.DateTimeFormat("en-PH", {
-    timeZone: "Asia/Manila",
-    month: "short",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(at);
+  return manilaDateTime.format(at);
 }

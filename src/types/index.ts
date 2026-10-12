@@ -15,6 +15,10 @@ export interface PlayerGroup extends RecordBase {
   photo?: string;
 }
 export interface Session extends RecordBase {
+  continuous?: boolean;
+  mode?: Mode;
+  bannerPhoto?: string;
+  queue?: { upNext: string[]; standby: string[] };
   attendance?: Record<
     string,
     { action: "check-in" | "check-out" | "undo-check-out"; at: number }[]
@@ -39,6 +43,8 @@ export interface Court extends RecordBase {
   reservationHistory?: { start: number; end: number; changedAt: number }[];
 }
 export interface Match extends RecordBase {
+  scoreDraft?: { a: string; b: string };
+  resultHistory?: ResultChange[];
   sessionId: string;
   courtId: string;
   eligiblePlayerIds?: string[];
@@ -49,6 +55,18 @@ export interface Match extends RecordBase {
   scoreA?: number;
   scoreB?: number;
   endedAt?: number;
+}
+export interface MatchResult {
+  winner: "A" | "B";
+  scoreA?: number;
+  scoreB?: number;
+}
+export interface ResultChange {
+  id: string;
+  at: number;
+  kind: "correction" | "undo";
+  before: MatchResult;
+  after: MatchResult;
 }
 export type Mode = "random" | "fair" | "balanced";
 export interface Stats {

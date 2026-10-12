@@ -1,22 +1,8 @@
-﻿import type { NextConfig } from "next";
+import type { NextConfig } from "next";
 const config: NextConfig = {
-  async headers() {
-    return [
-      {
-        source: "/sw.js",
-        headers: [
-          {
-            key: "Cache-Control",
-            value: "no-cache, no-store, must-revalidate",
-          },
-          {
-            key: "Content-Type",
-            value: "application/javascript; charset=utf-8",
-          },
-          { key: "Service-Worker-Allowed", value: "/" },
-        ],
-      },
-    ];
-  },
+  devIndicators: false,
+  output: "export",
+  trailingSlash: true,
+  images: { unoptimized: true },
 };
 export default config;

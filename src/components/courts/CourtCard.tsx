@@ -1,19 +1,26 @@
 "use client";
-import { useEffect, useState } from "react";
-import { Flag, Check } from "lucide-react";
+import { storageError } from "@/lib/storage";
+import { useEffect, useRef, useState } from "react";
+import { Flag, Check, Clock } from "lucide-react";
+import { matchElapsed } from "@/lib/match-time";
 import type { Court, Match, Player } from "@/types";
-import { assignMatch, extendReservation } from "@/lib/db";
-import { courtStatus, venueTime } from "@/lib/reservations";
+import { assignMatch, saveScoreDraft } from "@/lib/db";
+import { courtStatus } from "@/lib/reservations";
+import ResultEditor from "./ResultEditor";
 import { Avatar } from "@/components/players/PlayerCard";
 export default function CourtCard({
   court,
   match,
   players,
   onResult,
+  eligiblePlayers,
+  canAssign = false,
 }: {
   court: Court;
   match?: Match;
   players: Player[];
+  eligiblePlayers: Player[];
+  canAssign?: boolean;
   onResult: (
     id: string,
     winner: "A" | "B",
@@ -28,14 +35,33 @@ export default function CourtCard({
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
   }, []);
-  const [a, setA] = useState("");
-  const [b, setB] = useState("");
+  const [a, setA] = useState(match?.scoreDraft?.a ?? "");
+  const [b, setB] = useState(match?.scoreDraft?.b ?? "");
+  const submission = useRef(false);
+  const [assignment, setAssignment] = useState(["", "", "", ""]);
+  const draftWrites = useRef<Promise<void>>(Promise.resolve());
+  const [draftStatus, setDraftStatus] = useState("");
+  function draft(team: "a" | "b", value: string) {
+    if (!match || !/^\d*$/.test(value)) return;
+    if (team === "a") setA(value);
+    else setB(value);
+    setDraftStatus("Saving score...");
+    draftWrites.current = draftWrites.current
+      .then(() => saveScoreDraft(match.id, { [team]: value }))
+      .then(() => setDraftStatus("Score saved on this device."))
+      .catch((error) => {
+        setError(storageError(error));
+        setDraftStatus("Score could not be saved. Try entering it again.");
+      });
+  }
   const [busy, setBusy] = useState(false);
   const live = match?.status === "playing";
   async function finish(w: "A" | "B") {
-    if (!match) return;
+    if (!match || submission.current) return;
+    submission.current = true;
     setBusy(true);
     try {
+      await draftWrites.current;
       await onResult(
         match.id,
         w,
@@ -43,6 +69,7 @@ export default function CourtCard({
         b === "" ? undefined : Number(b),
       );
     } finally {
+      submission.current = false;
       setBusy(false);
     }
   }
@@ -55,44 +82,27 @@ export default function CourtCard({
           </span>
           Court {court.number}
         </h3>
-        <span className={live ? "pill lime" : "pill"}>
-          {live
-            ? "● Playing"
-            : match?.status === "completed"
-              ? "Completed"
-              : "Ready to play"}
-        </span>
-      </div>
-      <div className="court-controls">
-        <span className="pill">{courtStatus(court, now, !!live)}</span>
-        {court.reservationStart !== undefined &&
-          court.reservationEnd !== undefined && (
-            <p>
-              {venueTime(court.reservationStart)} ?{" "}
-              {venueTime(court.reservationEnd)} ?{" "}
-              {Math.max(0, Math.ceil((court.reservationEnd - now) / 60000))} min
-              remaining
-            </p>
+        <div className="court-match-status">
+          <span className={live ? "pill lime" : "pill"}>
+            {live
+              ? "● Playing"
+              : match?.status === "completed"
+                ? "Completed"
+                : courtStatus(court, now)}
+          </span>
+          {live && match && (
+            <span
+              className="court-match-timer"
+              aria-label={`Match elapsed time ${matchElapsed(match, now)}`}
+            >
+              <Clock size={14} aria-hidden="true" />
+              {matchElapsed(match, now)}
+            </span>
           )}
-        <button
-          className="text-button"
-          onClick={async () => {
-            try {
-              await extendReservation(
-                court.id,
-                Math.max(now, court.reservationEnd ?? now) + 1800000,
-              );
-              setError("");
-            } catch (e) {
-              setError(e instanceof Error ? e.message : "Could not extend.");
-            }
-          }}
-        >
-          Extend reservation 30 min
-        </button>
-        {error && <p role="alert">{error}</p>}
+        </div>
       </div>
-      {!live && (
+      {error && <p role="alert">{error}</p>}
+      {!live && canAssign && (
         <>
           <button className="text-button" onClick={() => setManual(!manual)}>
             Manual assignment
@@ -101,6 +111,9 @@ export default function CourtCard({
             <form
               onSubmit={async (e) => {
                 e.preventDefault();
+                if (submission.current) return;
+                submission.current = true;
+                setBusy(true);
                 const f = new FormData(e.currentTarget);
                 try {
                   await assignMatch(
@@ -111,9 +124,10 @@ export default function CourtCard({
                   setManual(false);
                   setError("");
                 } catch (e) {
-                  setError(
-                    e instanceof Error ? e.message : "Could not assign.",
-                  );
+                  setError(storageError(e));
+                } finally {
+                  submission.current = false;
+                  setBusy(false);
                 }
               }}
             >
@@ -121,19 +135,49 @@ export default function CourtCard({
               {[0, 1, 2, 3].map((i) => (
                 <label key={i}>
                   Player {i + 1}
-                  <select name="assigned" required defaultValue="">
+                  <select
+                    name="assigned"
+                    required
+                    value={assignment[i]}
+                    onChange={(event) =>
+                      setAssignment((values) =>
+                        values.map((value, index) =>
+                          index === i ? event.target.value : value,
+                        ),
+                      )
+                    }
+                  >
                     <option value="" disabled>
                       Select player
                     </option>
-                    {players.map((p) => (
-                      <option value={p.id} key={p.id}>
-                        {p.name}
-                      </option>
-                    ))}
+                    {eligiblePlayers
+                      .filter(
+                        (p) =>
+                          !assignment.some(
+                            (id, index) => index !== i && id === p.id,
+                          ),
+                      )
+                      .map((p) => (
+                        <option value={p.id} key={p.id}>
+                          {p.name}
+                        </option>
+                      ))}
                   </select>
                 </label>
               ))}
-              <button className="primary">Assign match</button>
+              <p className="muted">Choose four different checked-in players.</p>
+              <button
+                className="primary"
+                disabled={
+                  busy ||
+                  assignment.some(
+                    (id) => !eligiblePlayers.some((p) => p.id === id),
+                  ) ||
+                  new Set(assignment).size !== 4
+                }
+              >
+                Assign match
+              </button>
             </form>
           )}
         </>
@@ -172,7 +216,7 @@ export default function CourtCard({
                     step="1"
                     placeholder="—"
                     value={a}
-                    onChange={(e) => setA(e.target.value)}
+                    onChange={(e) => draft("a", e.target.value)}
                   />
                 </label>
                 <span>:</span>
@@ -184,10 +228,13 @@ export default function CourtCard({
                     step="1"
                     placeholder="—"
                     value={b}
-                    onChange={(e) => setB(e.target.value)}
+                    onChange={(e) => draft("b", e.target.value)}
                   />
                 </label>
               </div>
+              <p className="score-save-status" role="status">
+                {draftStatus}
+              </p>
               <small className="muted">
                 Optional scores · Select the winning team
               </small>
@@ -211,20 +258,26 @@ export default function CourtCard({
               </div>
             </div>
           ) : (
-            <p className="result">
-              <Check size={16} />
-              Team {match.winner} won{" "}
-              {match.scoreA !== undefined
-                ? match.scoreA + " – " + match.scoreB
-                : ""}
-            </p>
+            <>
+              <p className="result">
+                <Check size={16} />
+                Team {match.winner} won{" "}
+                {match.scoreA !== undefined
+                  ? match.scoreA + " – " + match.scoreB
+                  : ""}
+              </p>
+              {match.endedAt !== undefined && (
+                <p className="muted">Duration: {matchElapsed(match)}</p>
+              )}
+              <ResultEditor match={match} />
+            </>
           )}
         </>
       ) : (
         <div className="court-empty">
           <span>＋</span>
           <strong>A fresh game awaits</strong>
-          <p>Generate a round to fill this court.</p>
+          <p>Waiting for four ready players.</p>
         </div>
       )}
     </article>

@@ -1,4 +1,5 @@
 "use client";
+import { storageError } from "@/lib/storage";
 import { useState } from "react";
 import Link from "next/link";
 import { X } from "lucide-react";
@@ -17,6 +18,7 @@ export default function GroupManager({
   groups: PlayerGroup[];
   onEditingChange?: (editing: boolean) => void;
 }) {
+  const [deleteId, setDeleteId] = useState<string | null>(null);
   const [editing, setEditing] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [photo, setPhoto] = useState<string | null>(null);
@@ -35,10 +37,11 @@ export default function GroupManager({
     try {
       await saveGroup(name, selected, editing || undefined, photo);
       setEditing(null);
+      setDeleteId(null);
       onEditingChange?.(false);
       setNotice("Group saved. Choose it when setting up a session.");
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Could not save group.");
+      setError(storageError(e));
     } finally {
       setBusy(false);
     }
@@ -58,6 +61,7 @@ export default function GroupManager({
           disabled={busy || photoBusy || playerBusy}
           onClick={() => {
             setEditing("");
+            setDeleteId(null);
             onEditingChange?.(true);
             setName("");
             setPhoto(null);
@@ -85,6 +89,7 @@ export default function GroupManager({
               disabled={busy || playerBusy || photoBusy}
               onClick={() => {
                 setEditing(null);
+                setDeleteId(null);
                 onEditingChange?.(false);
               }}
             >
@@ -168,6 +173,7 @@ export default function GroupManager({
               disabled={busy || photoBusy || playerBusy}
               onClick={() => {
                 setEditing(null);
+                setDeleteId(null);
                 onEditingChange?.(false);
               }}
             >
@@ -181,29 +187,60 @@ export default function GroupManager({
             </button>
           </div>
           {editing && (
-            <button
-              type="button"
-              className="text-button"
-              disabled={busy || photoBusy || playerBusy}
-              onClick={async () => {
-                setBusy(true);
-                setError("");
-                try {
-                  await db.groups.delete(editing);
-                  setEditing(null);
-                  onEditingChange?.(false);
-                  setNotice(
-                    "Group removed. Your players and match results are still saved.",
-                  );
-                } catch {
-                  setError("Could not remove the group. Try again.");
-                } finally {
-                  setBusy(false);
-                }
-              }}
-            >
-              Delete group (keep players)
-            </button>
+            <>
+              <button
+                type="button"
+                className="text-button"
+                disabled={busy || photoBusy || playerBusy}
+                onClick={() => setDeleteId(editing)}
+              >
+                Delete group (keep players)
+              </button>
+              {deleteId === editing && (
+                <div
+                  className="alert"
+                  role="region"
+                  aria-label="Delete group confirmation"
+                >
+                  <p>
+                    Delete this saved group? Your players, photos on player
+                    records, and match results will stay.
+                  </p>
+                  <button
+                    type="button"
+                    className="secondary"
+                    onClick={() => setDeleteId(null)}
+                  >
+                    Keep group
+                  </button>
+                  <button
+                    type="button"
+                    className="text-button"
+                    disabled={busy || photoBusy || playerBusy}
+                    onClick={async () => {
+                      setBusy(true);
+                      setError("");
+                      try {
+                        await db.groups.delete(editing);
+                        setDeleteId(null);
+                        setEditing(null);
+                        setDeleteId(null);
+                        onEditingChange?.(false);
+                        setNotice(
+                          "Group removed. Your players and match results are still saved.",
+                        );
+                      } catch {
+                        setError("Could not remove the group. Try again.");
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    Confirm group deletion
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </form>
       ) : (
@@ -251,6 +288,7 @@ export default function GroupManager({
                       aria-label={"Manage " + g.name}
                       onClick={() => {
                         setEditing(g.id);
+                        setDeleteId(null);
                         onEditingChange?.(true);
                         setName(g.name);
                         setPhoto(g.photo ?? null);
